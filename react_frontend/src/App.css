@@ -1,0 +1,160 @@
+/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: sans-serif;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Container setup for centering content */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  background-color: #f0f0f0;
+  width: 100%;
+}
+
+/* Header styles */
+.header {
+  display: flex;
+  justify-content: flex-start; /* Align items to the start (left) */
+  align-items: center; /* Vertically align content */
+  background-color: #282828;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  height: 20%; /* Adjust based on your needs */
+  padding-right: 20px; /* Space between the text and right edge */
+  position: relative;
+  width: 100%;
+}
+
+/* Container for header text and DC */
+.header-text-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+/* DC text that floats */
+.dc-float {
+  position: absolute;
+  right: -15rem; /* Adjust this value to move the DC text closer or further from the header text */
+  top: 1rem;  /* Adjust this to align the DC text vertically */
+  font-size: 1rem; /* Adjust font size */
+  color: white;
+  opacity: 0;
+  animation: slideFadeIn 0.5s ease-in-out forwards;
+  animation-delay: 0.5s;
+}
+
+/* Main header text */
+/* Header text */
+.header-text {
+  color: white;
+  font-family: Arial;
+  font-size: 2rem; /* Adjust font size */
+  font-weight: bold;
+  margin-left: 20px; /* Fixed distance from the bars */
+  position: absolute; /* Use absolute positioning */
+  bottom: -4rem; /* Fixed distance from the bottom of the header container */
+  left: 0; /* Keep it aligned with the left edge of the header container */
+  flex-shrink: 0; /* Prevent text from shrinking */
+}
+
+/* Vertical bars inside the header */
+.bars-container {
+  display: flex;
+  align-items: stretch;
+  height: 100%; /* Ensure full height for bars */
+  width: 20%;  /* Adjust the width of the bars */
+}
+
+/* Color classes for each bar */
+.RD { background-color: #bf0d3e; width: 16.66%; }
+.OR { background-color: #ed8b00; width: 16.66%; }
+.YL { background-color: #FFD100; width: 16.66%; }
+.GR { background-color: #00B140; width: 16.66%; }
+.BL { background-color: #009cde; width: 16.66%; }
+.SV { background-color: #919d9d; width: 16.66%; }
+
+/* Main content */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 2rem;
+}
+
+/* Card for map */
+.map-container {
+  background: rgb(84, 74, 74);
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 1200px;
+  height: 60vh;
+  margin-top: 2rem;
+}
+
+/* Card content styling */
+.card {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+/* Button and card content styling */
+button {
+  background-color: #61dafb;
+  padding: 0.5rem 1rem;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+button:hover {
+  background-color: #4fa3f7;
+}
+
+footer {
+  padding: 1rem;
+  text-align: center;
+  background-color: #f0f0f0;
+}
+
+/* Styling for the read docs footer */
+.read-the-docs {
+  font-size: 0.875rem;
+  color: #888;
+}
+
+/* Animation for DC text */
+@keyframes slideFadeIn {
+  0% {
+    opacity: 0;
+    transform: translate(0, -50%);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+.coordinates-display {
+  margin-top: 1rem;
+  font-size: 1.2rem;
+  color: #333;
+}
