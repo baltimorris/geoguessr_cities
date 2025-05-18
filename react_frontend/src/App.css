@@ -5,6 +5,23 @@
   box-sizing: border-box;
   justify-content: center;
 }
+.settings-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: white;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.settings-content {
+  margin-top: 100px; /* Leaves room under the fixed header elements */
+  color: white;
+  padding: 1rem;
+}
 
 html, body, #root {
   height: 100%;
@@ -35,6 +52,9 @@ html, body, #root {
   padding-right: 20px; /* Space between the text and right edge */
   position: relative;
   width: 100%;
+  overflow: hidden;
+  height: 250px; /* Initial height */
+  transition: height 0.4s ease-in-out;
 }
 
 /* Container for header text and DC */
@@ -53,7 +73,7 @@ html, body, #root {
   color: white;
   opacity: 0;
   animation: slideFadeIn 0.5s ease-in-out forwards;
-  animation-delay: 0.5s;
+  animation-delay: 1s;
 }
 
 /* Main header text */
