@@ -17,10 +17,15 @@
   z-index: 10;
 }
 
-.settings-content {
-  margin-top: 100px; /* Leaves room under the fixed header elements */
-  color: white;
-  padding: 1rem;
+/* Subtle hover feedback */
+.settings-button:hover {
+  color: #ccc;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
 }
 
 html, body, #root {
@@ -41,70 +46,6 @@ html, body, #root {
   width: 100%;
 }
 
-/* Header styles */
-.header {
-  display: flex;
-  justify-content: flex-start; /* Align items to the start (left) */
-  align-items: center; /* Vertically align content */
-  background-color: #282828;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  height: 20%; /* Adjust based on your needs */
-  padding-right: 20px; /* Space between the text and right edge */
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  height: 250px; /* Initial height */
-  transition: height 0.4s ease-in-out;
-}
-
-/* Container for header text and DC */
-.header-text-container {
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-/* DC text that floats */
-.dc-float {
-  position: absolute;
-  right: -15rem; /* Adjust this value to move the DC text closer or further from the header text */
-  top: 1rem;  /* Adjust this to align the DC text vertically */
-  font-size: 1rem; /* Adjust font size */
-  color: white;
-  opacity: 0;
-  animation: slideFadeIn 0.5s ease-in-out forwards;
-  animation-delay: 1s;
-}
-
-/* Main header text */
-/* Header text */
-.header-text {
-  color: white;
-  font-family: Arial;
-  font-size: 2rem; /* Adjust font size */
-  font-weight: bold;
-  margin-left: 20px; /* Fixed distance from the bars */
-  position: absolute; /* Use absolute positioning */
-  bottom: -4rem; /* Fixed distance from the bottom of the header container */
-  left: 0; /* Keep it aligned with the left edge of the header container */
-  flex-shrink: 0; /* Prevent text from shrinking */
-}
-
-/* Vertical bars inside the header */
-.bars-container {
-  display: flex;
-  align-items: stretch;
-  height: 100%; /* Ensure full height for bars */
-  width: 20%;  /* Adjust the width of the bars */
-}
-
-/* Color classes for each bar */
-.RD { background-color: #bf0d3e; width: 16.66%; }
-.OR { background-color: #ed8b00; width: 16.66%; }
-.YL { background-color: #FFD100; width: 16.66%; }
-.GR { background-color: #00B140; width: 16.66%; }
-.BL { background-color: #009cde; width: 16.66%; }
-.SV { background-color: #919d9d; width: 16.66%; }
 
 /* Main content */
 main {
@@ -141,12 +82,7 @@ button {
   border: none;
   font-size: 1rem;
   cursor: pointer;
-  border-radius: 4px;
   transition: background-color 0.2s ease-in-out;
-}
-
-button:hover {
-  background-color: #4fa3f7;
 }
 
 footer {
