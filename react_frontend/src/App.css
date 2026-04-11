@@ -46,7 +46,6 @@ html, body, #root {
   width: 100%;
 }
 
-
 /* Main content */
 main {
   flex: 1;
@@ -76,7 +75,7 @@ main {
 }
 
 /* Button and card content styling */
-button {
+Button {
   background-color: #61dafb;
   padding: 0.5rem 1rem;
   border: none;
