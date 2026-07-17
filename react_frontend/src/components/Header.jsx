@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Switch from '@mui/material/Switch';
 import { FaCog } from 'react-icons/fa';
@@ -6,8 +6,42 @@ import './Header.css';
 
 const barClasses = ['RD', 'OR', 'BL', 'YL', 'GR', 'SV'];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity }) {
+const ADMIN_PASSWORD = 'pylon'; // temp until there's a real backend
+
+// key in gameSettings -> label, mirrors the percents in 00_parameters.R
+const dcWeightFields = [
+  ['at_large', 'At-large %'],
+  ['downtown', 'Downtown %'],
+  ['greater_central', 'Greater central %'],
+  ['metro', 'Metro %'],
+  ['metro_distance', 'Metro distance (ft)'],
+];
+const nycWeightFields = [
+  ['manhattan', 'Manhattan %'],
+  ['brooklyn', 'Brooklyn %'],
+  ['queens', 'Queens %'],
+  ['bronx', 'Bronx %'],
+  ['subway', 'Subway %'],
+  ['subway_distance', 'Subway distance (ft)'],
+];
+
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings }) {
   const isNYC = !isDC;
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [pwEntry, setPwEntry] = useState('');
+  const [pwError, setPwError] = useState(false);
+
+  const cityKey = isDC ? 'dc' : 'nyc';
+
+  const tryUnlock = () => {
+    if (pwEntry === ADMIN_PASSWORD) {
+      setAdminUnlocked(true);
+      setPwError(false);
+    } else {
+      setPwError(true);
+    }
+    setPwEntry('');
+  };
 
   return (
     <motion.header
@@ -45,10 +79,10 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity })
           {isNYC && (
             <motion.div
               className="nyc-arrow"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ delay: 0.6, duration: 0.4 }}
+              initial={{ opacity: 0, x: -20, y: -20 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              exit={{ opacity: 0, x: -20, y: -20 }}
+              transition={{ delay: 0.6, duration: 0.4, ease: 'easeOut' }}
             >
               {/* MTA-style wayfinding arrow: shaft plus two head lines, hard edges, pointing SE */}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -88,6 +122,62 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity })
               />
               <span style={{ fontWeight: isNYC ? 'bold' : 'normal', opacity: isNYC ? 1 : 0.5 }}>NYC</span>
             </label>
+
+            <div className="admin-section">
+              {adminUnlocked ? (
+                <>
+                  <div className="city-question">Admin</div>
+                  <label className="admin-field">
+                    Game code
+                    <input
+                      className="code-input"
+                      maxLength={4}
+                      placeholder="AUTO"
+                      value={gameSettings.code}
+                      onChange={e => setGameSettings({
+                        ...gameSettings,
+                        code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+                      })}
+                    />
+                  </label>
+                  <label className="admin-field">
+                    Max points per location
+                    <input
+                      type="number"
+                      value={gameSettings.maxPoints}
+                      onChange={e => setGameSettings({ ...gameSettings, maxPoints: Number(e.target.value) })}
+                    />
+                  </label>
+                  <div className="city-question">{isDC ? 'DC' : 'NYC'} location weights</div>
+                  <div className="admin-grid">
+                    {(isDC ? dcWeightFields : nycWeightFields).map(([key, label]) => (
+                      <label className="admin-field" key={key}>
+                        {label}
+                        <input
+                          type="number"
+                          value={gameSettings[cityKey][key]}
+                          onChange={e => setGameSettings({
+                            ...gameSettings,
+                            [cityKey]: { ...gameSettings[cityKey], [key]: Number(e.target.value) }
+                          })}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <label className="admin-field">
+                  Admin password
+                  <input
+                    type="password"
+                    value={pwEntry}
+                    onChange={e => { setPwEntry(e.target.value); setPwError(false); }}
+                    onKeyDown={e => { if (e.key === 'Enter') tryUnlock(); }}
+                  />
+                  {pwError && <span className="pw-error">nope</span>}
+                </label>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
