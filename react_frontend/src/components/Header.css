@@ -59,12 +59,18 @@
   align-items: stretch;
   height: 100%; /* Ensure full height for bars */
   width: 20%;  /* Adjust the width of the bars */
+  position: relative; /* Anchor for the NYC arrow */
 }
+
+/* NYC subway-sign arrow, sits where the bars retract from */
 .nyc-arrow {
   position: absolute;
-  bottom: 10px;
-  left: 10px;
-  scale: 100.5x;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 3rem;
 }
 
 /* Color classes for each bar */

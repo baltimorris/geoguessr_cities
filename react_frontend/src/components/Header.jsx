@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Switch from '@mui/material/Switch';
 import { FaCog, FaArrowDown } from 'react-icons/fa';
@@ -6,8 +6,8 @@ import './Header.css';
 
 const barClasses = ['RD', 'OR', 'BL', 'YL', 'GR', 'SV'];
 
-export default function Header({ settingsOpen, setSettingsOpen }) {
-  const [isNYC, setIsNYC] = useState(false);
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity }) {
+  const isNYC = !isDC;
 
   return (
     <motion.header
@@ -30,6 +30,19 @@ export default function Header({ settingsOpen, setSettingsOpen }) {
             }}
           />
         ))}
+        <AnimatePresence>
+          {isNYC && (
+            <motion.div
+              className="nyc-arrow"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.6, duration: 0.4 }}
+            >
+              <FaArrowDown />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <motion.div
@@ -64,9 +77,9 @@ export default function Header({ settingsOpen, setSettingsOpen }) {
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Switch
                 checked={isNYC}
-                onChange={() => setIsNYC(prev => !prev)}
+                onChange={() => setCity(prev => !prev)}
               />
-              NYC Mode (Reverse Bars)
+              NYC Mode
             </label>
           </motion.div>
         )}
