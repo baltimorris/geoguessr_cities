@@ -149,6 +149,17 @@
   font-size: 0.9rem;
 }
 
+/* Phones: one weight per row so nothing runs off the right edge */
+@media (max-width: 600px) {
+  .settings-pane {
+    padding-right: 20px;
+    font-size: 1rem;
+  }
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Color classes for each bar */
 .RD { background-color: #bf0d3e; width: 16.66%; }
 .OR { background-color: #ed8b00; width: 16.66%; }
