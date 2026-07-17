@@ -30,23 +30,6 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity })
             }}
           />
         ))}
-        <AnimatePresence>
-          {isNYC && (
-            <motion.div
-              className="nyc-arrow"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ delay: 0.6, duration: 0.4 }}
-            >
-              {/* MTA-style wayfinding arrow: shaft plus two head lines, hard edges, pointing SE */}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square">
-                <path d="M5 5L17.5 17.5" />
-                <polyline points="18,9 18,18 9,18" />
-              </svg>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       <motion.div
@@ -58,6 +41,23 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity })
         }}
         transition={{ duration: 0.4 }}
       >
+        <AnimatePresence>
+          {isNYC && (
+            <motion.div
+              className="nyc-arrow"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.6, duration: 0.4 }}
+            >
+              {/* MTA-style wayfinding arrow: shaft plus two head lines, hard edges, pointing SE */}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M2.5 2.5L20 20" />
+                <polyline points="21.5,10 21.5,21.5 10,21.5" />
+              </svg>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="dc-float">{isNYC ? 'NYC' : 'DC'}</div>
         <div className="header-text">LocalGuessr</div>
       </motion.div>

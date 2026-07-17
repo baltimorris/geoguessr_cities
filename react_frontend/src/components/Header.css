@@ -62,18 +62,17 @@
   position: relative; /* Anchor for the NYC arrow */
 }
 
-/* NYC subway-sign arrow, anchored just left of the LocalGuessr text */
+/* NYC subway-sign arrow, same size as the header text and flush against it */
 .nyc-arrow {
   position: absolute;
-  inset: 0;
+  bottom: -3.6rem;
+  right: -20px;
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
   color: white;
 }
 
 .nyc-arrow svg {
-  height: 85%;
+  height: 2rem;
   width: auto;
 }
 
