@@ -176,6 +176,83 @@ footer {
   margin-top: 0.5rem;
 }
 
+/* Lobby, where bubbles float until the runner starts the game */
+.lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  text-align: center;
+}
+
+.player-tag-input {
+  width: min(12rem, 70vw);
+  font-size: 1.1rem;
+  text-align: center;
+  padding: 0.4rem;
+  border: 2px solid #282828;
+  border-radius: 8px;
+  background: white;
+  color: #282828;
+}
+
+.lobby-area {
+  position: relative;
+  width: 100%;
+  height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #6eb7f0;
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+.bubble-role {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.bubble-tag {
+  font-size: 0.8rem;
+  font-weight: bold;
+  max-width: 85px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Street view for mapprs */
+.streetview-frame {
+  width: 100%;
+  max-width: 1200px;
+  height: 65vh;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.streetview-fallback {
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.streetview-fallback .team-hint {
+  margin-top: 0.5rem;
+}
+
 /* Small team badge shown once you're in */
 .team-chip {
   display: flex;

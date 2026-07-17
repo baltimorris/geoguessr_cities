@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Button from '@mui/material/Button';
 
-export default function TeamSetup({ gameCode, onReady }) {
-  const [teamName, setTeamName] = useState('');
+export default function TeamSetup({ gameCode, teamName, setTeamName, onReady }) {
   const [photo, setPhoto] = useState(null);
   const [guessrTaken, setGuessrTaken] = useState(false);
 

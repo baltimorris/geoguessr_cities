@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Switch from '@mui/material/Switch';
+import Button from '@mui/material/Button';
 import { FaCog } from 'react-icons/fa';
 import './Header.css';
 
@@ -25,7 +26,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, onStartGame }) {
   const isNYC = !isDC;
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [pwEntry, setPwEntry] = useState('');
@@ -96,10 +97,12 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
         <div className="header-text">LocalGuessr</div>
       </motion.div>
 
-      {/* Gear Button */}
-      <button className="settings-button" onClick={() => setSettingsOpen(prev => !prev)}>
-        <FaCog />
-      </button>
+      {/* Gear Button, goes away once you've committed to a team */}
+      {!hideSettings && (
+        <button className="settings-button" onClick={() => setSettingsOpen(prev => !prev)}>
+          <FaCog />
+        </button>
+      )}
 
 
       {/* Settings Panel */}
@@ -148,6 +151,9 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                       onChange={e => setGameSettings({ ...gameSettings, maxPoints: Number(e.target.value) })}
                     />
                   </label>
+                  <Button variant='contained' size='large' onClick={onStartGame}>
+                    Start game
+                  </Button>
                   <div className="city-question">{isDC ? 'DC' : 'NYC'} location weights</div>
                   <div className="admin-grid">
                     {(isDC ? dcWeightFields : nycWeightFields).map(([key, label]) => (
