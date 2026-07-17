@@ -62,15 +62,19 @@
   position: relative; /* Anchor for the NYC arrow */
 }
 
-/* NYC subway-sign arrow, sits where the bars retract from */
+/* NYC subway-sign arrow, anchored just left of the LocalGuessr text */
 .nyc-arrow {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   color: white;
-  font-size: 3.5rem;
+}
+
+.nyc-arrow svg {
+  height: 85%;
+  width: auto;
 }
 
 /* Settings pane, floats over the expanded header */
@@ -91,6 +95,10 @@
 
 .settings-pane h2 {
   font-family: Arial;
+  font-weight: bold;
+}
+
+.city-question {
   font-weight: bold;
 }
 

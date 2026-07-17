@@ -39,9 +39,10 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity })
               exit={{ opacity: 0 }}
               transition={{ delay: 0.6, duration: 0.4 }}
             >
-              {/* MTA-style wayfinding arrow, hard edges, pointing SE */}
-              <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor">
-                <path transform="rotate(-45 12 12)" d="M9.5 2h5v11H20L12 22 4 13h5.5z" />
+              {/* MTA-style wayfinding arrow: shaft plus two head lines, hard edges, pointing SE */}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square">
+                <path d="M5 5L17.5 17.5" />
+                <polyline points="18,9 18,18 9,18" />
               </svg>
             </motion.div>
           )}
@@ -78,12 +79,14 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity })
             transition={{ delay: 0.4, duration: 0.4 }}
           >
             <h2>Settings</h2>
+            <div className="city-question">Which city?</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontWeight: isDC ? 'bold' : 'normal', opacity: isDC ? 1 : 0.5 }}>DC</span>
               <Switch
                 checked={isNYC}
                 onChange={() => setCity(prev => !prev)}
               />
-              NYC Mode
+              <span style={{ fontWeight: isNYC ? 'bold' : 'normal', opacity: isNYC ? 1 : 0.5 }}>NYC</span>
             </label>
           </motion.div>
         )}
