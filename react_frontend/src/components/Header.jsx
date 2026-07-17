@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Switch from '@mui/material/Switch';
-import { FaCog, FaArrowDown } from 'react-icons/fa';
+import { FaCog } from 'react-icons/fa';
 import './Header.css';
 
 const barClasses = ['RD', 'OR', 'BL', 'YL', 'GR', 'SV'];
@@ -39,7 +39,10 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity })
               exit={{ opacity: 0 }}
               transition={{ delay: 0.6, duration: 0.4 }}
             >
-              <FaArrowDown />
+              {/* MTA-style wayfinding arrow, hard edges, pointing SE */}
+              <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor">
+                <path transform="rotate(-45 12 12)" d="M9.5 2h5v11H20L12 22 4 13h5.5z" />
+              </svg>
             </motion.div>
           )}
         </AnimatePresence>
@@ -74,6 +77,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity })
             exit={{ opacity: 0, y: -20 }}
             transition={{ delay: 0.4, duration: 0.4 }}
           >
+            <h2>Settings</h2>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Switch
                 checked={isNYC}
