@@ -76,19 +76,20 @@
   width: auto;
 }
 
-/* Settings pane, floats over the expanded header */
+/* Settings pane, floats over the expanded header, lines up with the stripes */
 .settings-pane {
   position: absolute;
   top: 10vh;
-  left: 0;
+  left: 20%; /* same left edge as the header text, right where the bars end */
   right: 0;
   bottom: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-start; /* beats the global center rule in App.css */
-  align-items: center;
+  align-items: flex-start;
+  text-align: left;
   gap: 1.5rem;
-  padding: 2rem;
+  padding: 2rem 2rem 2rem 20px;
   color: white;
   font-size: 1.2rem;
   z-index: 5;
@@ -108,7 +109,7 @@
 .admin-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   margin-top: 1rem;
 }
