@@ -113,3 +113,81 @@ footer {
   font-size: 1.2rem;
   color: #333;
 }
+
+/* Game code entry on the home page */
+.code-entry,
+.team-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+.code-entry-input {
+  width: 12rem;
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  padding: 0.5rem 0 0.5rem 0.4em; /* left pad offsets the trailing letter-spacing */
+  border: 2px solid #282828;
+  border-radius: 8px;
+  background: white;
+  color: #282828;
+}
+
+.join-error {
+  color: #bf0d3e;
+  font-size: 1rem;
+}
+
+/* Team setup page */
+.team-hint {
+  color: #777;
+  font-size: 0.95rem;
+  margin-top: -0.75rem;
+}
+
+.team-name-input {
+  width: min(18rem, 80vw);
+  font-size: 1.3rem;
+  text-align: center;
+  padding: 0.5rem;
+  border: 2px solid #282828;
+  border-radius: 8px;
+  background: white;
+  color: #282828;
+}
+
+.team-photo {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid #282828;
+}
+
+.role-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Small team badge shown once you're in */
+.team-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.team-chip img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 50%;
+}

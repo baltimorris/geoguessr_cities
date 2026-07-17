@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import './App.css';
 import MapView from './components/MapView';
 import Header from './components/Header';
+import GameCodeEntry from './components/GameCodeEntry';
+import TeamSetup from './components/TeamSetup';
 import { AnimatePresence } from 'framer-motion';
-import Button from '@mui/material/Button';
 
 // Defaults lifted from 00_parameters.R
 const defaultGameSettings = {
@@ -16,8 +17,13 @@ const defaultGameSettings = {
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isDC, setCity] = useState(true);
-  const [role, setRole] = useState(null); // null until a player picks viewr or guessr
   const [gameSettings, setGameSettings] = useState(defaultGameSettings);
+  const [joinedCode, setJoinedCode] = useState(null);
+  const [team, setTeam] = useState(null); // { name, photo }
+  const [role, setRole] = useState(null); // 'guessr' | 'mappr'
+
+  // Until there's a backend, the joinable code is whatever admin set (or DEMO)
+  const activeCode = gameSettings.code || 'DEMO';
 
   return (
     <div className="app-container">
@@ -30,19 +36,25 @@ function App() {
       <AnimatePresence>
       </AnimatePresence>
       <main>
-        {role === null && (
-          <>
-            <Button variant='contained' size='large' onClick={() => setRole('viewr')}>I'm the Viewr</Button>
-            <br/>
-            <Button variant='contained' size='large' onClick={() => setRole('guessr')}>I'm the Guessr</Button>
-          </>
+        {!joinedCode && (
+          <GameCodeEntry activeCode={activeCode} onJoin={setJoinedCode} />
+        )}
+        {joinedCode && !role && (
+          <TeamSetup gameCode={joinedCode}
+                     onReady={(t, r) => { setTeam(t); setRole(r); }} />
+        )}
+        {role && (
+          <div className="team-chip">
+            {team.photo && <img src={team.photo} alt="team" />}
+            <span>{team.name}</span>
+          </div>
         )}
         {role === 'guessr' && (
           <div className="map-container">
             <MapView isDC={isDC} />
           </div>
         )}
-        {role === 'viewr' && (
+        {role === 'mappr' && (
           <p>Street view goes here</p>
         )}
       </main>
