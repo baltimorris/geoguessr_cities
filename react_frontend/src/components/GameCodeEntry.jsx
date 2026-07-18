@@ -1,16 +1,24 @@
 import React, { useState } from 'react';
 import Button from '@mui/material/Button';
+import { supabase } from '../supabase';
 
 export default function GameCodeEntry({ activeCode, onJoin }) {
   const [entry, setEntry] = useState('');
   const [error, setError] = useState(false);
+  const [checking, setChecking] = useState(false);
 
-  const tryJoin = () => {
-    if (entry === activeCode) {
-      onJoin(entry);
-    } else {
-      setError(true);
+  const tryJoin = async () => {
+    // Local-only fallback when supabase env vars aren't set
+    if (!supabase) {
+      if (entry === activeCode) onJoin({ code: entry, status: 'lobby' });
+      else setError(true);
+      return;
     }
+    setChecking(true);
+    const { data } = await supabase.from('games').select().eq('code', entry).maybeSingle();
+    setChecking(false);
+    if (data) onJoin(data);
+    else setError(true);
   };
 
   return (
@@ -27,10 +35,10 @@ export default function GameCodeEntry({ activeCode, onJoin }) {
         }}
         onKeyDown={e => { if (e.key === 'Enter' && entry.length === 4) tryJoin(); }}
       />
-      <Button variant='contained' size='large' disabled={entry.length < 4} onClick={tryJoin}>
-        Join
+      <Button variant='contained' size='large' disabled={entry.length < 4 || checking} onClick={tryJoin}>
+        {checking ? 'Checking...' : 'Join'}
       </Button>
-      {error && <p className="join-error">That's not it. Ask whoever's running the game.</p>}
+      {error && <p className="join-error">No game found. Ask Jay or Drew for the right code!</p>}
     </div>
   );
 }

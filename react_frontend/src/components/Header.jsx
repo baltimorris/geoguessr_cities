@@ -26,7 +26,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, onStartGame }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame }) {
   const isNYC = !isDC;
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [pwEntry, setPwEntry] = useState('');
@@ -151,9 +151,18 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                       onChange={e => setGameSettings({ ...gameSettings, maxPoints: Number(e.target.value) })}
                     />
                   </label>
-                  <Button variant='contained' size='large' onClick={onStartGame}>
-                    Start game
-                  </Button>
+                  {adminGame ? (
+                    <>
+                      <p className="admin-game-live">Game <b>{adminGame.code}</b> is up, tell people the code</p>
+                      <Button variant='contained' size='large' onClick={onStartGame}>
+                        Start game
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant='contained' size='large' onClick={onCreateGame}>
+                      Create game
+                    </Button>
+                  )}
                   <div className="city-question">{isDC ? 'DC' : 'NYC'} location weights</div>
                   <div className="admin-grid">
                     {(isDC ? dcWeightFields : nycWeightFields).map(([key, label]) => (

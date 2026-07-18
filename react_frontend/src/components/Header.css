@@ -149,6 +149,11 @@
   font-size: 0.9rem;
 }
 
+.admin-game-live {
+  font-size: 1rem;
+  color: #00B140;
+}
+
 /* Phones: one weight per row so nothing runs off the right edge */
 @media (max-width: 600px) {
   .settings-pane {
