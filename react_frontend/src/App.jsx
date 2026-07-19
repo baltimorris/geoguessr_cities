@@ -5,7 +5,8 @@ import GameCodeEntry from './components/GameCodeEntry';
 import TeamSetup from './components/TeamSetup';
 import Lobby from './components/Lobby';
 import GuessrView from './components/GuessrView';
-import StreetView from './components/StreetView';
+import MapprView from './components/MapprView';
+import RoundReveal from './components/RoundReveal';
 import Results from './components/Results';
 import { AnimatePresence } from 'framer-motion';
 import { supabase } from './supabase';
@@ -14,6 +15,9 @@ import { supabase } from './supabase';
 const defaultGameSettings = {
   code: '',
   maxPoints: 5000,
+  rounds: 3,
+  locationsPerRound: 5,
+  roundMinutes: 15,
   dc: { at_large: 50, downtown: 15, greater_central: 25, metro: 10, metro_distance: 150 },
   nyc: { manhattan: 43, brooklyn: 32, queens: 12, bronx: 3, subway: 10, subway_distance: 100 },
 };
@@ -22,6 +26,8 @@ const defaultGameSettings = {
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const genCode = () =>
   Array.from({ length: 4 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
+
+const REVEAL_DELAY_MS = 5000; // "Round over!" breather before the reveal
 
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -35,6 +41,13 @@ function App() {
   const [role, setRole] = useState(null); // 'guessr' | 'mappr'
   const [player, setPlayer] = useState({ tag: '' }); // how you show up in the lobby
   const [localStarted, setLocalStarted] = useState(false); // covers no-supabase mode
+  const [now, setNow] = useState(Date.now());
+
+  // shared clock tick, everything time-based hangs off this
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // Until there's a backend, the joinable code is whatever admin set (or DEMO)
   const activeCode = gameSettings.code || 'DEMO';
@@ -44,8 +57,21 @@ function App() {
 
   const gameStarted = localStarted || game?.status === 'active' || game?.status === 'finished';
   const gameOver = game?.status === 'finished';
+  const currentRound = game?.current_round || 1;
+  const roundMinutes = game?.settings?.roundMinutes ?? 15;
 
-  // Follow the joined game live: start, next location, finish all arrive here
+  // The deadline lives in the db (round_started_at), so every phone agrees on it
+  const deadline = game?.round_started_at
+    ? new Date(game.round_started_at).getTime() + roundMinutes * 60000
+    : null;
+
+  let phase = 'guessing';
+  if (gameStarted && !gameOver && deadline) {
+    if (now >= deadline + REVEAL_DELAY_MS) phase = 'reveal';
+    else if (now >= deadline) phase = 'roundover';
+  }
+
+  // Follow the joined game live: start, next round, finish all arrive here
   useEffect(() => {
     if (!supabase || !game?.id) return;
     const channel = supabase.channel(`game-${game.id}`)
@@ -56,13 +82,16 @@ function App() {
     return () => supabase.removeChannel(channel);
   }, [game?.id]);
 
-  // Grab the round's locations once the game is going
+  // Grab every round's locations once the game is going
   useEffect(() => {
     if (!supabase || !game?.id || !gameStarted) return;
     supabase.from('locations')
-      .select('seq,lat,lng,heading').eq('game_id', game.id).order('seq')
+      .select('round,seq,lat,lng,heading').eq('game_id', game.id)
+      .order('round').order('seq')
       .then(({ data }) => setLocations(data || []));
   }, [game?.id, gameStarted]);
+
+  const roundLocations = locations.filter(l => l.round === currentRound);
 
   const joinGame = (g) => {
     setGame(g);
@@ -84,16 +113,20 @@ function App() {
   const startGame = async () => {
     if (supabase && adminGame) {
       const { data } = await supabase.from('games')
-        .update({ status: 'active' }).eq('id', adminGame.id).select().single();
+        .update({ status: 'active', current_round: 1, round_started_at: new Date().toISOString() })
+        .eq('id', adminGame.id).select().single();
       if (data) setAdminGame(data);
     }
-    setLocalStarted(true); // instant feedback on the runner's device + no-supabase mode
+    setLocalStarted(true); // no-supabase mode
   };
 
-  const nextLocation = async () => {
+  const nextRound = async () => {
     if (!supabase || !adminGame) return;
     const { data } = await supabase.from('games')
-      .update({ current_seq: (adminGame.current_seq || 1) + 1 })
+      .update({
+        current_round: (adminGame.current_round || 1) + 1,
+        round_started_at: new Date().toISOString(),
+      })
       .eq('id', adminGame.id).select().single();
     if (data) setAdminGame(data);
   };
@@ -104,8 +137,6 @@ function App() {
       .update({ status: 'finished' }).eq('id', adminGame.id).select().single();
     if (data) setAdminGame(data);
   };
-
-  const currentLocation = locations.find(l => l.seq === (game?.current_seq || 1));
 
   return (
     <div className="app-container">
@@ -119,7 +150,7 @@ function App() {
               adminGame = {adminGame}
               onCreateGame = {createGame}
               onStartGame = {startGame}
-              onNextLocation = {nextLocation}
+              onNextRound = {nextRound}
               onFinishGame = {finishGame} />
       <AnimatePresence>
       </AnimatePresence>
@@ -140,21 +171,25 @@ function App() {
           </div>
         )}
         {role && !gameStarted && (
-          <Lobby role={role} team={team} player={player} setPlayer={setPlayer} />
+          <Lobby role={role} team={team} player={player} setPlayer={setPlayer} game={game} />
         )}
         {role && gameOver && (
           <Results game={game} locations={locations} />
         )}
-        {role === 'guessr' && gameStarted && !gameOver && (
-          <GuessrView game={game} team={team} locations={locations} />
+        {role && gameStarted && !gameOver && phase === 'roundover' && (
+          <div className="round-over">
+            <h2>Round over!</h2>
+            <p className="team-hint">Let's see how everyone did</p>
+          </div>
         )}
-        {role === 'mappr' && gameStarted && !gameOver && (
-          <>
-            <p className="round-progress">
-              Location {game?.current_seq || 1}{locations.length ? ` of ${locations.length}` : ''}
-            </p>
-            <StreetView isDC={isDC} location={currentLocation} />
-          </>
+        {role && gameStarted && !gameOver && phase === 'reveal' && (
+          <RoundReveal game={game} locations={locations} isDC={isDC} />
+        )}
+        {role === 'guessr' && gameStarted && !gameOver && phase === 'guessing' && (
+          <GuessrView game={game} team={team} roundLocations={roundLocations} deadline={deadline} now={now} />
+        )}
+        {role === 'mappr' && gameStarted && !gameOver && phase === 'guessing' && (
+          <MapprView roundLocations={roundLocations} isDC={isDC} currentRound={currentRound} />
         )}
       </main>
     </div>

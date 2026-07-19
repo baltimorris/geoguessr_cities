@@ -26,7 +26,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onNextLocation, onFinishGame }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onNextRound, onFinishGame }) {
   const isNYC = !isDC;
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [pwEntry, setPwEntry] = useState('');
@@ -151,6 +151,32 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                       onChange={e => setGameSettings({ ...gameSettings, maxPoints: Number(e.target.value) })}
                     />
                   </label>
+                  <div className="admin-grid">
+                    <label className="admin-field">
+                      Rounds
+                      <input
+                        type="number"
+                        value={gameSettings.rounds}
+                        onChange={e => setGameSettings({ ...gameSettings, rounds: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label className="admin-field">
+                      Locations per round
+                      <input
+                        type="number"
+                        value={gameSettings.locationsPerRound}
+                        onChange={e => setGameSettings({ ...gameSettings, locationsPerRound: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label className="admin-field">
+                      Round minutes
+                      <input
+                        type="number"
+                        value={gameSettings.roundMinutes}
+                        onChange={e => setGameSettings({ ...gameSettings, roundMinutes: Number(e.target.value) })}
+                      />
+                    </label>
+                  </div>
                   {!adminGame && (
                     <Button variant='contained' size='large' onClick={onCreateGame}>
                       Create game
@@ -166,10 +192,16 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                   )}
                   {adminGame?.status === 'active' && (
                     <>
-                      <p className="admin-game-live">Game <b>{adminGame.code}</b> is on location {adminGame.current_seq || 1}</p>
+                      <p className="admin-game-live">
+                        Game <b>{adminGame.code}</b> &mdash; round {adminGame.current_round || 1} of {adminGame.settings?.rounds ?? 3}
+                      </p>
                       <div className="admin-round-buttons">
-                        <Button variant='contained' onClick={onNextLocation}>
-                          Next location
+                        <Button
+                          variant='contained'
+                          disabled={(adminGame.current_round || 1) >= (adminGame.settings?.rounds ?? 3)}
+                          onClick={onNextRound}
+                        >
+                          Next round
                         </Button>
                         <Button variant='outlined' onClick={onFinishGame}>
                           Finish game

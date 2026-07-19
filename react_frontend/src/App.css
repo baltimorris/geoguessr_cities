@@ -253,6 +253,134 @@ footer {
   margin-top: 0.5rem;
 }
 
+/* Round countdown */
+.timer-bar {
+  position: relative;
+  width: min(40rem, 92vw);
+  height: 1.6rem;
+  background: #ddd;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.timer-fill {
+  height: 100%;
+  background: #00B140;
+  transition: width 1s linear;
+}
+
+.timer-bar.urgent .timer-fill {
+  background: #bf0d3e;
+}
+
+.timer-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #282828;
+}
+
+/* Location chips for the guessr */
+.location-chips {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chip {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 2px solid #282828;
+  background: white;
+  color: #282828;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+}
+
+.chip.picked {
+  background: #6eb7f0;
+}
+
+.chip.locked {
+  background: #00B140;
+  color: white;
+}
+
+.chip.active {
+  outline: 3px solid #ed8b00;
+}
+
+/* Mappr carousel */
+.mappr-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.pano-carousel {
+  display: flex;
+  width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: 0.75rem;
+}
+
+.pano-slide {
+  position: relative;
+  flex: 0 0 92%;
+  height: 62vh;
+  scroll-snap-align: center;
+}
+
+.pano-slide .streetview-frame {
+  height: 100%;
+}
+
+.pano-label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: #282828;
+  color: white;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Round over interstitial */
+.round-over {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.round-over h2 {
+  font-size: 2.5rem;
+}
+
+/* Reveal */
+.reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
 /* In-round screens */
 .guessr-view {
   display: flex;

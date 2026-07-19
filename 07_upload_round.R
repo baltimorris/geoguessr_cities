@@ -12,7 +12,8 @@ supabase_key <- Sys.getenv("SUPABASE_KEY")
 game_code <- "ABCD"   # whatever code the admin panel gave you
 
 locations_upload <- read_csv(paste0(output_location, "Round ", round_no, "/locations.csv")) %>%
-  select(seq = seqnum, lat = latitude, lng = longitude)
+  select(seq = seqnum, lat = latitude, lng = longitude) %>%
+  mutate(round = round_no)
 
 resp <- GET(
   paste0(supabase_url, "/rest/v1/games?code=eq.", game_code, "&select=id"),

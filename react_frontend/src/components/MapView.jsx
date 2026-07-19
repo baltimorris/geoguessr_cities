@@ -2,13 +2,15 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 
-export default function MapView({ isDC = true, onPick }) {
-  const [position, setPosition] = useState(null);
+export default function MapView({ isDC = true, onPick, position }) {
+  const [internal, setInternal] = useState(null);
+  // controlled when a position prop is passed, self-managed otherwise
+  const shown = position !== undefined ? position : internal;
 
   function ClickHandler() {
     useMapEvents({
       click(e) {
-        setPosition(e.latlng);
+        setInternal(e.latlng);
         if (onPick) onPick(e.latlng);
       },
     });
@@ -25,7 +27,7 @@ export default function MapView({ isDC = true, onPick }) {
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <ClickHandler />
-        {position && <Marker position={position} />}
+        {shown && <Marker position={shown} />}
       </MapContainer>
     </div>
   );
