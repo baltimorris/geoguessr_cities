@@ -328,7 +328,7 @@ footer {
   outline: 3px solid #ed8b00;
 }
 
-/* Mappr carousel */
+/* Mappr street view */
 .mappr-view {
   display: flex;
   flex-direction: column;
@@ -337,53 +337,27 @@ footer {
   width: 100%;
 }
 
-.pano-carousel {
-  display: flex;
-  width: 100%;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  gap: 0.75rem;
-}
-
-.pano-slide {
+/* Panorama runs edge to edge under the header, chips underneath switch locations */
+.pano-stage {
   position: relative;
-  flex: 0 0 92%;
+  /* break out of main's 2rem padding without using 100vw, which counts the scrollbar */
+  align-self: stretch;
+  margin: 0 -2rem;
   height: 62vh;
-  scroll-snap-align: center;
 }
 
-.pano-slide .streetview-frame {
-  height: 100%;
+/* portrait phones want the height, there's no width to spare */
+@media (orientation: portrait) {
+  .pano-stage {
+    height: 65vh;
+  }
 }
 
-/* stand-in for slides that aren't on screen */
-.pano-placeholder {
+.pano-stage .streetview-frame {
   width: 100%;
   height: 100%;
-  border-radius: 8px;
-  background: #d8d8d8;
-  color: #888;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  font-weight: bold;
-}
-
-.pano-label {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 2;
-  width: 2.2rem;
-  height: 2.2rem;
-  border-radius: 50%;
-  background: #282828;
-  color: white;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  max-width: none;
+  border-radius: 0;
 }
 
 /* Round with nothing uploaded yet */

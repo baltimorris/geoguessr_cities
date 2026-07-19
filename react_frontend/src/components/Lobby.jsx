@@ -49,7 +49,11 @@ export default function Lobby({ role, team, player, setPlayer, game }) {
         if (status === 'SUBSCRIBED') setSubscribed(true);
       });
     channelRef.current = channel;
+    // presence events can get dropped on flaky bar wifi, so re-read the roster
+    // every few seconds and let the lobby heal itself
+    const poll = setInterval(refresh, 3000);
     return () => {
+      clearInterval(poll);
       setSubscribed(false);
       supabase.removeChannel(channel);
       channelRef.current = null;
