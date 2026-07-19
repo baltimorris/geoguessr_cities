@@ -18,22 +18,30 @@ function loadMaps(apiKey) {
 
 const FIXED_ZOOM = 1;
 
-export default function StreetView({ isDC }) {
+export default function StreetView({ isDC, location }) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const panoRef = useRef(null);
-  // Placeholder spots until rounds come from the backend: Dupont Circle / Times Square
-  const position = isDC
-    ? { lat: 38.9097, lng: -77.0434 }
-    : { lat: 40.7580, lng: -73.9855 };
+  const panoObj = useRef(null);
+
+  // Fall back to a fun spot if the game has no locations loaded
+  const lat = location?.lat ?? (isDC ? 38.9097 : 40.7580);
+  const lng = location?.lng ?? (isDC ? -77.0434 : -73.9855);
+  const heading = location?.heading ?? 210;
 
   useEffect(() => {
     if (!apiKey) return;
     let cancelled = false;
     loadMaps(apiKey).then(google => {
       if (cancelled || !panoRef.current) return;
+      if (panoObj.current) {
+        // round advanced, move the existing pano
+        panoObj.current.setPosition({ lat, lng });
+        panoObj.current.setPov({ heading, pitch: 0 });
+        return;
+      }
       const pano = new google.maps.StreetViewPanorama(panoRef.current, {
-        position,
-        pov: { heading: 210, pitch: 0 },
+        position: { lat, lng },
+        pov: { heading, pitch: 0 },
         zoom: FIXED_ZOOM,
         // pan around all you want, but nothing that gives the location away
         addressControl: false,
@@ -53,9 +61,10 @@ export default function StreetView({ isDC }) {
       pano.addListener('zoom_changed', () => {
         if (pano.getZoom() !== FIXED_ZOOM) pano.setZoom(FIXED_ZOOM);
       });
+      panoObj.current = pano;
     });
     return () => { cancelled = true; };
-  }, [apiKey, position.lat, position.lng]);
+  }, [apiKey, lat, lng, heading]);
 
   if (!apiKey) {
     return (

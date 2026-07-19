@@ -26,7 +26,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onNextLocation, onFinishGame }) {
   const isNYC = !isDC;
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [pwEntry, setPwEntry] = useState('');
@@ -151,17 +151,34 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                       onChange={e => setGameSettings({ ...gameSettings, maxPoints: Number(e.target.value) })}
                     />
                   </label>
-                  {adminGame ? (
+                  {!adminGame && (
+                    <Button variant='contained' size='large' onClick={onCreateGame}>
+                      Create game
+                    </Button>
+                  )}
+                  {adminGame?.status === 'lobby' && (
                     <>
                       <p className="admin-game-live">Game <b>{adminGame.code}</b> is up, tell people the code</p>
                       <Button variant='contained' size='large' onClick={onStartGame}>
                         Start game
                       </Button>
                     </>
-                  ) : (
-                    <Button variant='contained' size='large' onClick={onCreateGame}>
-                      Create game
-                    </Button>
+                  )}
+                  {adminGame?.status === 'active' && (
+                    <>
+                      <p className="admin-game-live">Game <b>{adminGame.code}</b> is on location {adminGame.current_seq || 1}</p>
+                      <div className="admin-round-buttons">
+                        <Button variant='contained' onClick={onNextLocation}>
+                          Next location
+                        </Button>
+                        <Button variant='outlined' onClick={onFinishGame}>
+                          Finish game
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                  {adminGame?.status === 'finished' && (
+                    <p className="admin-game-live">Game <b>{adminGame.code}</b> is done, scores are up</p>
                   )}
                   <div className="city-question">{isDC ? 'DC' : 'NYC'} location weights</div>
                   <div className="admin-grid">

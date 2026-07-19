@@ -2,13 +2,14 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 
-export default function MapView({ isDC = true }) {
+export default function MapView({ isDC = true, onPick }) {
   const [position, setPosition] = useState(null);
 
   function ClickHandler() {
     useMapEvents({
       click(e) {
         setPosition(e.latlng);
+        if (onPick) onPick(e.latlng);
       },
     });
     return null;

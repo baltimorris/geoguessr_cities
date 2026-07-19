@@ -154,6 +154,16 @@
   color: #00B140;
 }
 
+.admin-round-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.admin-round-buttons .MuiButton-outlined {
+  color: white;
+  border-color: #666;
+}
+
 /* Phones: one weight per row so nothing runs off the right edge */
 @media (max-width: 600px) {
   .settings-pane {

@@ -253,6 +253,57 @@ footer {
   margin-top: 0.5rem;
 }
 
+/* In-round screens */
+.guessr-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.guessr-view .map-container {
+  margin-top: 0;
+}
+
+.round-progress {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+/* Final scores */
+.results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.results-list {
+  list-style: none;
+  width: min(24rem, 90vw);
+}
+
+.results-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid #ddd;
+  font-size: 1.1rem;
+}
+
+.results-list li.winner {
+  font-weight: bold;
+  font-size: 1.3rem;
+  background: #FFD100;
+  border-radius: 8px;
+}
+
+.results-score {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Small team badge shown once you're in */
 .team-chip {
   display: flex;

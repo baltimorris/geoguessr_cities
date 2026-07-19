@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import MapView from './components/MapView';
 import Header from './components/Header';
 import GameCodeEntry from './components/GameCodeEntry';
 import TeamSetup from './components/TeamSetup';
 import Lobby from './components/Lobby';
+import GuessrView from './components/GuessrView';
 import StreetView from './components/StreetView';
+import Results from './components/Results';
 import { AnimatePresence } from 'framer-motion';
 import { supabase } from './supabase';
 
@@ -28,37 +29,44 @@ function App() {
   const [gameSettings, setGameSettings] = useState(defaultGameSettings);
   const [game, setGame] = useState(null); // the games row you joined
   const [adminGame, setAdminGame] = useState(null); // the games row created from the admin panel
+  const [locations, setLocations] = useState([]);
   const [teamName, setTeamName] = useState('');
   const [team, setTeam] = useState(null); // { id, name, photo }
   const [role, setRole] = useState(null); // 'guessr' | 'mappr'
   const [player, setPlayer] = useState({ tag: '' }); // how you show up in the lobby
-  const [gameStarted, setGameStarted] = useState(false);
+  const [localStarted, setLocalStarted] = useState(false); // covers no-supabase mode
 
-  // Local-only fallback code when supabase env vars aren't set
+  // Until there's a backend, the joinable code is whatever admin set (or DEMO)
   const activeCode = gameSettings.code || 'DEMO';
 
   // Players shouldn't be poking at settings once they've named a team
   const hideSettings = teamName.trim().length > 0;
 
-  // Watch the joined game so everyone flips over the moment the runner hits start
+  const gameStarted = localStarted || game?.status === 'active' || game?.status === 'finished';
+  const gameOver = game?.status === 'finished';
+
+  // Follow the joined game live: start, next location, finish all arrive here
   useEffect(() => {
     if (!supabase || !game?.id) return;
-    if (game.status === 'active') {
-      setGameStarted(true);
-      return;
-    }
     const channel = supabase.channel(`game-${game.id}`)
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${game.id}` },
-        payload => { if (payload.new.status === 'active') setGameStarted(true); })
+        payload => setGame(prev => ({ ...prev, ...payload.new })))
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [game?.id, game?.status]);
+  }, [game?.id]);
+
+  // Grab the round's locations once the game is going
+  useEffect(() => {
+    if (!supabase || !game?.id || !gameStarted) return;
+    supabase.from('locations')
+      .select('seq,lat,lng,heading').eq('game_id', game.id).order('seq')
+      .then(({ data }) => setLocations(data || []));
+  }, [game?.id, gameStarted]);
 
   const joinGame = (g) => {
     setGame(g);
     if (g.city) setCity(g.city === 'DC');
-    if (g.status === 'active') setGameStarted(true);
   };
 
   const createGame = async () => {
@@ -75,10 +83,29 @@ function App() {
 
   const startGame = async () => {
     if (supabase && adminGame) {
-      await supabase.from('games').update({ status: 'active' }).eq('id', adminGame.id);
+      const { data } = await supabase.from('games')
+        .update({ status: 'active' }).eq('id', adminGame.id).select().single();
+      if (data) setAdminGame(data);
     }
-    setGameStarted(true); // covers local-only mode and the runner's own device
+    setLocalStarted(true); // instant feedback on the runner's device + no-supabase mode
   };
+
+  const nextLocation = async () => {
+    if (!supabase || !adminGame) return;
+    const { data } = await supabase.from('games')
+      .update({ current_seq: (adminGame.current_seq || 1) + 1 })
+      .eq('id', adminGame.id).select().single();
+    if (data) setAdminGame(data);
+  };
+
+  const finishGame = async () => {
+    if (!supabase || !adminGame) return;
+    const { data } = await supabase.from('games')
+      .update({ status: 'finished' }).eq('id', adminGame.id).select().single();
+    if (data) setAdminGame(data);
+  };
+
+  const currentLocation = locations.find(l => l.seq === (game?.current_seq || 1));
 
   return (
     <div className="app-container">
@@ -91,7 +118,9 @@ function App() {
               hideSettings = {hideSettings}
               adminGame = {adminGame}
               onCreateGame = {createGame}
-              onStartGame = {startGame} />
+              onStartGame = {startGame}
+              onNextLocation = {nextLocation}
+              onFinishGame = {finishGame} />
       <AnimatePresence>
       </AnimatePresence>
       <main>
@@ -113,13 +142,19 @@ function App() {
         {role && !gameStarted && (
           <Lobby role={role} team={team} player={player} setPlayer={setPlayer} />
         )}
-        {role === 'guessr' && gameStarted && (
-          <div className="map-container">
-            <MapView isDC={isDC} />
-          </div>
+        {role && gameOver && (
+          <Results game={game} locations={locations} />
         )}
-        {role === 'mappr' && gameStarted && (
-          <StreetView isDC={isDC} />
+        {role === 'guessr' && gameStarted && !gameOver && (
+          <GuessrView game={game} team={team} locations={locations} />
+        )}
+        {role === 'mappr' && gameStarted && !gameOver && (
+          <>
+            <p className="round-progress">
+              Location {game?.current_seq || 1}{locations.length ? ` of ${locations.length}` : ''}
+            </p>
+            <StreetView isDC={isDC} location={currentLocation} />
+          </>
         )}
       </main>
     </div>
