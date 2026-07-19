@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, CircleMarker, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../supabase';
-import { haversineFt, scoreGuess, distanceLabel, latestGuess, maxDistForCity } from '../scoring';
+import { haversineFt, scoreGuess, distanceLabel, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
 const REVEAL_MS = 1100;   // per guess line
 const LINGER_MS = 2000;   // pause on a finished location
@@ -39,13 +39,14 @@ export default function RoundReveal({ game, locations, isDC }) {
 
       const maxPoints = game.settings?.maxPoints || 5000;
       const maxDist = maxDistForCity(game.city);
+      const merged = mergeTeams(teams);
 
       // per location of this round: each team's latest guess, farthest first
       const byLoc = {};
       for (const loc of roundLocations) {
-        byLoc[loc.seq] = teams
+        byLoc[loc.seq] = merged
           .map(t => {
-            const g = latestGuess(guesses || [], t.id, round, loc.seq);
+            const g = latestGuess(guesses || [], t.ids, round, loc.seq);
             if (!g) return null;
             const dist = haversineFt(loc.lat, loc.lng, g.lat, g.lng);
             return { team: t.name, lat: g.lat, lng: g.lng, dist, score: scoreGuess(dist, maxPoints, maxDist) };
@@ -56,10 +57,10 @@ export default function RoundReveal({ game, locations, isDC }) {
 
       // cumulative standings through this round
       const playedLocs = locations.filter(l => l.round <= round);
-      const standings = teams.map(t => {
+      const standings = merged.map(t => {
         let total = 0, roundScore = 0;
         for (const loc of playedLocs) {
-          const g = latestGuess(guesses || [], t.id, loc.round, loc.seq);
+          const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
           if (!g) continue;
           const s = scoreGuess(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist);
           total += s;

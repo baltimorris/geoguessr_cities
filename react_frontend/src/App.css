@@ -372,6 +372,15 @@ footer {
   justify-content: center;
 }
 
+/* Round with nothing uploaded yet */
+.empty-round {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
 /* Round over interstitial */
 .round-over {
   display: flex;

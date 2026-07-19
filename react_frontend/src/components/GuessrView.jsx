@@ -40,6 +40,15 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
     setLocked(prev => ({ ...prev, [sel]: true }));
   };
 
+  if (!roundLocations.length) {
+    return (
+      <div className="empty-round">
+        <h2>No locations for round {round} yet</h2>
+        <p className="team-hint">The game runner still has to upload them</p>
+      </div>
+    );
+  }
+
   return (
     <div className="guessr-view">
       {remaining !== null && (

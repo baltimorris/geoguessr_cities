@@ -46,10 +46,16 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
       onReady({ name, photo }, role);
       return;
     }
-    const { data: teamRow, error } = await supabase.from('teams')
-      .upsert({ game_id: game.id, name }, { onConflict: 'game_id,name' })
-      .select().single();
-    if (error || !teamRow) {
+    // team names are case insensitive, "Beb" and "beb" are the same crew
+    const { data: existing } = await supabase.from('teams')
+      .select('*').eq('game_id', game.id).ilike('name', name).limit(1);
+    let teamRow = existing?.[0];
+    if (!teamRow) {
+      const { data: made } = await supabase.from('teams')
+        .insert({ game_id: game.id, name }).select().single();
+      teamRow = made;
+    }
+    if (!teamRow) {
       setOops("Couldn't join the team, try again");
       return;
     }
@@ -64,7 +70,8 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
         return;
       }
     }
-    onReady({ id: teamRow.id, name, photo }, role);
+    // keep whatever spelling the team registered with first
+    onReady({ id: teamRow.id, name: teamRow.name, photo }, role);
   };
 
   const nameReady = name.length > 0;

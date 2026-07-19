@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import { haversineFt, scoreGuess, latestGuess, maxDistForCity } from '../scoring';
+import { haversineFt, scoreGuess, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
 export default function Results({ game, locations }) {
   const [rows, setRows] = useState(null);
@@ -17,10 +17,10 @@ export default function Results({ game, locations }) {
       const maxPoints = game.settings?.maxPoints || 5000;
       const maxDist = maxDistForCity(game.city);
 
-      const scored = teams.map(t => {
+      const scored = mergeTeams(teams).map(t => {
         let total = 0;
         for (const loc of locations) {
-          const g = latestGuess(guesses || [], t.id, loc.round, loc.seq);
+          const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
           if (!g) continue;
           total += scoreGuess(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist);
         }

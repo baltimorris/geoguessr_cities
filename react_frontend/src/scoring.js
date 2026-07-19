@@ -22,9 +22,22 @@ export const distanceLabel = ft =>
   ft < 5280 ? `${Math.round(ft)} ft` : `${(ft / 5280).toFixed(1)} mi`;
 
 // latest guess per team+round+location wins, same as 05_score.R
-export const latestGuess = (guesses, teamId, round, location) =>
-  guesses
-    .filter(g => g.team_id === teamId && g.round === round && g.location === location)
+export const latestGuess = (guesses, teamIds, round, location) => {
+  const ids = Array.isArray(teamIds) ? teamIds : [teamIds];
+  return guesses
+    .filter(g => ids.includes(g.team_id) && g.round === round && g.location === location)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+};
+
+// "Beb" and "beb" are one team, fold any duplicate rows together
+export const mergeTeams = (teams) => {
+  const byKey = new Map();
+  for (const t of teams) {
+    const key = (t.name || '').trim().toLowerCase();
+    if (byKey.has(key)) byKey.get(key).ids.push(t.id);
+    else byKey.set(key, { name: t.name, ids: [t.id] });
+  }
+  return [...byKey.values()];
+};
 
 export const maxDistForCity = city => (city === 'NYC' ? 130000 : 73000);

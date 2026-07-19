@@ -26,9 +26,10 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onNextRound, onFinishGame }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onEndRound, onNextRound, onFinishGame, adminLocationCount = 0 }) {
   const isNYC = !isDC;
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminWarned, setAdminWarned] = useState(false);
   const [pwEntry, setPwEntry] = useState('');
   const [pwError, setPwError] = useState(false);
 
@@ -43,6 +44,21 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
     }
     setPwEntry('');
   };
+
+  if (adminUnlocked && !adminWarned) {
+    return (
+      <div className="admin-takeover">
+        <h1>Admin mode</h1>
+        <p>
+          This phone is now the game runner. You can't hand it back to a player
+          until the game is over, so make sure this is the phone you want running things.
+        </p>
+        <Button variant='contained' size='large' onClick={() => setAdminWarned(true)}>
+          Got it, I'm running this game
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <motion.header
@@ -182,6 +198,11 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                       Create game
                     </Button>
                   )}
+                  {adminGame && adminLocationCount === 0 && (
+                    <p className="admin-warning">
+                      No locations uploaded yet &mdash; run 07_upload_round.R with code {adminGame.code}
+                    </p>
+                  )}
                   {adminGame?.status === 'lobby' && (
                     <>
                       <p className="admin-game-live">Game <b>{adminGame.code}</b> is up, tell people the code</p>
@@ -196,6 +217,9 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                         Game <b>{adminGame.code}</b> &mdash; round {adminGame.current_round || 1} of {adminGame.settings?.rounds ?? 3}
                       </p>
                       <div className="admin-round-buttons">
+                        <Button variant='contained' onClick={onEndRound}>
+                          End round
+                        </Button>
                         <Button
                           variant='contained'
                           disabled={(adminGame.current_round || 1) >= (adminGame.settings?.rounds ?? 3)}

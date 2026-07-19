@@ -35,6 +35,7 @@ function App() {
   const [gameSettings, setGameSettings] = useState(defaultGameSettings);
   const [game, setGame] = useState(null); // the games row you joined
   const [adminGame, setAdminGame] = useState(null); // the games row created from the admin panel
+  const [adminLocations, setAdminLocations] = useState([]); // so the runner knows if a round is loaded
   const [locations, setLocations] = useState([]);
   const [teamName, setTeamName] = useState('');
   const [team, setTeam] = useState(null); // { id, name, photo }
@@ -91,6 +92,14 @@ function App() {
       .then(({ data }) => setLocations(data || []));
   }, [game?.id, gameStarted]);
 
+  // the runner needs to know whether 07_upload_round.R has run for this game
+  useEffect(() => {
+    if (!supabase || !adminGame?.id) return;
+    supabase.from('locations')
+      .select('round,seq').eq('game_id', adminGame.id)
+      .then(({ data }) => setAdminLocations(data || []));
+  }, [adminGame?.id, adminGame?.status, adminGame?.current_round]);
+
   const roundLocations = locations.filter(l => l.round === currentRound);
 
   const joinGame = (g) => {
@@ -118,6 +127,17 @@ function App() {
       if (data) setAdminGame(data);
     }
     setLocalStarted(true); // no-supabase mode
+  };
+
+  // Ends the round for everyone right now by pushing the deadline into the past,
+  // which trips the same "Round over" -> reveal path the timer uses
+  const endRound = async () => {
+    if (!supabase || !adminGame) return;
+    const mins = adminGame.settings?.roundMinutes ?? 15;
+    const { data } = await supabase.from('games')
+      .update({ round_started_at: new Date(Date.now() - mins * 60000).toISOString() })
+      .eq('id', adminGame.id).select().single();
+    if (data) setAdminGame(data);
   };
 
   const nextRound = async () => {
@@ -150,8 +170,10 @@ function App() {
               adminGame = {adminGame}
               onCreateGame = {createGame}
               onStartGame = {startGame}
+              onEndRound = {endRound}
               onNextRound = {nextRound}
-              onFinishGame = {finishGame} />
+              onFinishGame = {finishGame}
+              adminLocationCount = {adminLocations.length} />
       <AnimatePresence>
       </AnimatePresence>
       <main>

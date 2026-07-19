@@ -35,10 +35,11 @@ export default function Lobby({ role, team, player, setPlayer, game }) {
       config: { presence: { key: myKey } },
     });
     // sync alone misses renames, so refresh on joins and leaves too
+    const sameTeam = t => (t || '').trim().toLowerCase() === team.name.trim().toLowerCase();
     const refresh = () => {
       const state = channel.presenceState();
       const everyone = Object.entries(state).map(([key, metas]) => ({ key, ...metas[metas.length - 1] }));
-      setMembers(everyone.filter(m => m.team === team.name));
+      setMembers(everyone.filter(m => sameTeam(m.team)));
     };
     channel
       .on('presence', { event: 'sync' }, refresh)
@@ -70,7 +71,11 @@ export default function Lobby({ role, team, player, setPlayer, game }) {
   return (
     <div className="lobby">
       <h2>You're in!</h2>
-      <p className="team-hint">Hang tight until the game runner starts things off</p>
+      <p className="team-hint">
+        {bubbles.length > 1
+          ? `${bubbles.length} of you here so far`
+          : 'Hang tight until the game runner starts things off'}
+      </p>
       <input
         className="player-tag-input"
         maxLength={12}
