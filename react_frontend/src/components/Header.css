@@ -10,6 +10,8 @@
   width: 100%;
   overflow: hidden;
   z-index: 10;
+  flex-shrink: 0; /* tall pages were squashing it to nothing */
+  min-height: 8rem; /* 15vh alone clips the logo on short screens */
 }
 
 /* Header animation states */

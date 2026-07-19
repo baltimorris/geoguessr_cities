@@ -24,6 +24,7 @@ function Bubble({ role, label }) {
 
 export default function Lobby({ role, team, player, setPlayer, game }) {
   const [members, setMembers] = useState([]);
+  const [subscribed, setSubscribed] = useState(false);
   const channelRef = useRef(null);
   const myKey = useMemo(() => Math.random().toString(36).slice(2), []);
 
@@ -33,30 +34,38 @@ export default function Lobby({ role, team, player, setPlayer, game }) {
     const channel = supabase.channel(`lobby-${game.id}`, {
       config: { presence: { key: myKey } },
     });
+    // sync alone misses renames, so refresh on joins and leaves too
+    const refresh = () => {
+      const state = channel.presenceState();
+      const everyone = Object.entries(state).map(([key, metas]) => ({ key, ...metas[metas.length - 1] }));
+      setMembers(everyone.filter(m => m.team === team.name));
+    };
     channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const everyone = Object.entries(state).map(([key, metas]) => ({ key, ...metas[0] }));
-        setMembers(everyone.filter(m => m.team === team.name));
-      })
+      .on('presence', { event: 'sync' }, refresh)
+      .on('presence', { event: 'join' }, refresh)
+      .on('presence', { event: 'leave' }, refresh)
       .subscribe(status => {
-        if (status === 'SUBSCRIBED') {
-          channel.track({ team: team.name, role, tag: player.tag });
-        }
+        if (status === 'SUBSCRIBED') setSubscribed(true);
       });
     channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); channelRef.current = null; };
+    return () => {
+      setSubscribed(false);
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
   }, [game?.id, team?.name, role, myKey]);
 
-  // tag edits update your presence without resubscribing
+  // announce yourself, and re-announce whenever you rename
   useEffect(() => {
+    if (!subscribed) return;
     channelRef.current?.track({ team: team?.name, role, tag: player.tag });
-  }, [player.tag]);
+  }, [subscribed, player.tag, role, team?.name]);
 
-  // no backend? it's just you in here
-  const bubbles = supabase && members.length
-    ? members
-    : [{ key: 'me', role, tag: player.tag }];
+  // your own bubble is local so renaming shows up instantly, teammates come from presence
+  const bubbles = [
+    { key: myKey, role, tag: player.tag },
+    ...members.filter(m => m.key !== myKey),
+  ];
 
   return (
     <div className="lobby">

@@ -167,7 +167,7 @@ function App() {
         {role && (
           <div className="team-chip">
             {team.photo && <img src={team.photo} alt="team" />}
-            <span>{team.name}</span>
+            <span>Team {team.name}</span>
           </div>
         )}
         {role && !gameStarted && (

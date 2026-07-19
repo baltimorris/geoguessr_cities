@@ -73,14 +73,17 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
     <div className="team-setup">
       <h2>Team name</h2>
       <p className="team-hint">Everyone on your team enters the same name</p>
-      <input
-        className="team-name-input"
-        maxLength={30}
-        value={teamName}
-        autoFocus
-        placeholder="e.g. The Boshis"
-        onChange={e => setTeamName(e.target.value)}
-      />
+      <div className="team-name-field">
+        <span className="team-prefix">Team</span>
+        <input
+          className="team-name-input"
+          maxLength={30}
+          value={teamName}
+          autoFocus
+          placeholder="Boshis"
+          onChange={e => setTeamName(e.target.value)}
+        />
+      </div>
 
       <Button variant='outlined' component='label'>
         {photo ? 'Change team photo' : 'Team photo'}

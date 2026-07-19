@@ -150,8 +150,20 @@ footer {
   margin-top: -0.75rem;
 }
 
+/* "Team" sits outside the box so nobody types it twice */
+.team-name-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.team-prefix {
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
 .team-name-input {
-  width: min(18rem, 80vw);
+  width: min(14rem, 60vw);
   font-size: 1.3rem;
   text-align: center;
   padding: 0.5rem;
@@ -432,18 +444,19 @@ footer {
   font-variant-numeric: tabular-nums;
 }
 
-/* Small team badge shown once you're in */
+/* Team badge shown once you're in */
 .team-chip {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   font-weight: bold;
+  font-size: 1.6rem;
   margin-bottom: 1rem;
 }
 
 .team-chip img {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   object-fit: cover;
   border-radius: 50%;
 }
