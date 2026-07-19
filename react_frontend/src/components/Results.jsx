@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import Standings from './Standings';
 import { haversineFt, scoreGuess, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
 export default function Results({ game, locations }) {
@@ -36,14 +37,7 @@ export default function Results({ game, locations }) {
     <div className="results">
       <h2>Final scores</h2>
       {rows.length === 0 && <p className="team-hint">Nobody guessed anything?</p>}
-      <ol className="results-list">
-        {rows.map((r, i) => (
-          <li key={r.name} className={i === 0 ? 'winner' : ''}>
-            <span className="results-team">{i === 0 ? '\u{1F3C6} ' : ''}{r.name}</span>
-            <span className="results-score">{r.score.toLocaleString()}</span>
-          </li>
-        ))}
-      </ol>
+      <Standings rows={rows} renderScore={r => r.score.toLocaleString()} />
     </div>
   );
 }

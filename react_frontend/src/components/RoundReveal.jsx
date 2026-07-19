@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, CircleMarker, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../supabase';
+import Standings from './Standings';
 import { haversineFt, scoreGuess, distanceLabel, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
 const REVEAL_MS = 1100;   // per guess line
@@ -94,16 +95,10 @@ export default function RoundReveal({ game, locations, isDC }) {
     return (
       <div className="results">
         <h2>Round {round} standings</h2>
-        <ol className="results-list">
-          {data.standings.map((r, i) => (
-            <li key={r.name} className={i === 0 ? 'winner' : ''}>
-              <span className="results-team">{i === 0 ? '\u{1F3C6} ' : ''}{r.name}</span>
-              <span className="results-score">
-                +{r.roundScore.toLocaleString()} &rarr; {r.total.toLocaleString()}
-              </span>
-            </li>
-          ))}
-        </ol>
+        <Standings
+          rows={data.standings}
+          renderScore={r => `+${r.roundScore.toLocaleString()} → ${r.total.toLocaleString()}`}
+        />
         <p className="team-hint">
           {round < totalRounds
             ? 'Hang tight, the next round starts soon'
