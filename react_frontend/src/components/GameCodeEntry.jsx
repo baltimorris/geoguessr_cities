@@ -15,9 +15,12 @@ export default function GameCodeEntry({ activeCode, onJoin }) {
       return;
     }
     setChecking(true);
-    const { data } = await supabase.from('games').select().eq('code', entry).maybeSingle();
+    // codes get recycled, so only ever join the game that's still running
+    const { data } = await supabase.from('games')
+      .select().eq('code', entry).neq('status', 'finished')
+      .order('created_at', { ascending: false }).limit(1);
     setChecking(false);
-    if (data) onJoin(data);
+    if (data?.length) onJoin(data[0]);
     else setError(true);
   };
 

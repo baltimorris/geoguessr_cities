@@ -26,7 +26,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onEndRound, onNextRound, onFinishGame, adminLocationCount = 0 }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onEndRound, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminLocationCount = 0 }) {
   const isNYC = !isDC;
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminWarned, setAdminWarned] = useState(false);
@@ -198,10 +198,20 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                       Create game
                     </Button>
                   )}
+                  {adminError && <p className="pw-error">{adminError}</p>}
                   {adminGame && adminLocationCount === 0 && (
-                    <p className="admin-warning">
-                      No locations uploaded yet &mdash; run 07_upload_round.R with code {adminGame.code}
-                    </p>
+                    <>
+                      <p className="admin-warning">
+                        No locations yet &mdash; run 07_upload_round.R with code {adminGame.code},
+                        or grab some random ones to test with
+                      </p>
+                      <Button variant='outlined' disabled={generating} onClick={onSeedLocations}>
+                        {generating ? 'Finding street views...' : 'Generate locations'}
+                      </Button>
+                    </>
+                  )}
+                  {adminGame && adminLocationCount > 0 && (
+                    <p className="admin-game-live">{adminLocationCount} locations loaded</p>
                   )}
                   {adminGame?.status === 'lobby' && (
                     <>

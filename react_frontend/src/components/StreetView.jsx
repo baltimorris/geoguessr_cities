@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 
 // Load the Maps JS API once and share the promise
 let mapsPromise;
-function loadMaps(apiKey) {
+export function loadMaps(apiKey) {
   if (!mapsPromise) {
     mapsPromise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -22,6 +22,7 @@ export default function StreetView({ isDC, location }) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const panoRef = useRef(null);
   const panoObj = useRef(null);
+  const observer = useRef(null);
 
   // Fall back to a fun spot if the game has no locations loaded
   const lat = location?.lat ?? (isDC ? 38.9097 : 40.7580);
@@ -62,8 +63,21 @@ export default function StreetView({ isDC, location }) {
         if (pano.getZoom() !== FIXED_ZOOM) pano.setZoom(FIXED_ZOOM);
       });
       panoObj.current = pano;
+
+      // in the carousel the slide gets its width after the pano is built,
+      // and a pano that missed its size renders solid black until you poke it
+      const kick = () => google.maps.event.trigger(pano, 'resize');
+      setTimeout(kick, 60);
+      setTimeout(kick, 400);
+      const ro = new ResizeObserver(kick);
+      ro.observe(panoRef.current);
+      observer.current = ro;
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      observer.current?.disconnect();
+      observer.current = null;
+    };
   }, [apiKey, lat, lng, heading]);
 
   if (!apiKey) {

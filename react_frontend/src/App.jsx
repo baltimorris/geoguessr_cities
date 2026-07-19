@@ -10,6 +10,7 @@ import RoundReveal from './components/RoundReveal';
 import Results from './components/Results';
 import { AnimatePresence } from 'framer-motion';
 import { supabase } from './supabase';
+import { generateLocations } from './generateLocations';
 
 // Defaults lifted from 00_parameters.R
 const defaultGameSettings = {
@@ -36,6 +37,8 @@ function App() {
   const [game, setGame] = useState(null); // the games row you joined
   const [adminGame, setAdminGame] = useState(null); // the games row created from the admin panel
   const [adminLocations, setAdminLocations] = useState([]); // so the runner knows if a round is loaded
+  const [adminError, setAdminError] = useState('');
+  const [generating, setGenerating] = useState(false);
   const [locations, setLocations] = useState([]);
   const [teamName, setTeamName] = useState('');
   const [team, setTeam] = useState(null); // { id, name, photo }
@@ -109,14 +112,21 @@ function App() {
 
   const createGame = async () => {
     if (!supabase) return;
+    setAdminError('');
     const code = (gameSettings.code || genCode()).toUpperCase();
-    const { data } = await supabase.from('games')
+    const { data, error } = await supabase.from('games')
       .insert({ code, city: isDC ? 'DC' : 'NYC', settings: gameSettings, status: 'lobby' })
       .select().single();
-    if (data) {
-      setAdminGame(data);
-      setGameSettings({ ...gameSettings, code: data.code });
+    if (error) {
+      // the partial unique index only trips while another game with that code is live
+      setAdminError(error.code === '23505'
+        ? `Code ${code} is already running a game. Finish it or pick another.`
+        : "Couldn't create the game, try again");
+      return;
     }
+    setAdminGame(data);
+    setAdminLocations([]);
+    setGameSettings({ ...gameSettings, code: data.code });
   };
 
   const startGame = async () => {
@@ -127,6 +137,29 @@ function App() {
       if (data) setAdminGame(data);
     }
     setLocalStarted(true); // no-supabase mode
+  };
+
+  // Quick way to fill a game without running the R pipeline, handy for testing
+  const seedLocations = async () => {
+    if (!supabase || !adminGame) return;
+    setAdminError('');
+    setGenerating(true);
+    try {
+      const spots = await generateLocations({
+        apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+        city: adminGame.city,
+        rounds: gameSettings.rounds ?? 3,
+        perRound: gameSettings.locationsPerRound ?? 5,
+      });
+      if (!spots.length) throw new Error('no street view spots came back');
+      const { error } = await supabase.from('locations')
+        .insert(spots.map(s => ({ ...s, game_id: adminGame.id })));
+      if (error) throw error;
+      setAdminLocations(spots);
+    } catch (e) {
+      setAdminError(e.message || "Couldn't generate locations");
+    }
+    setGenerating(false);
   };
 
   // Ends the round for everyone right now by pushing the deadline into the past,
@@ -173,6 +206,9 @@ function App() {
               onEndRound = {endRound}
               onNextRound = {nextRound}
               onFinishGame = {finishGame}
+              onSeedLocations = {seedLocations}
+              generating = {generating}
+              adminError = {adminError}
               adminLocationCount = {adminLocations.length} />
       <AnimatePresence>
       </AnimatePresence>
