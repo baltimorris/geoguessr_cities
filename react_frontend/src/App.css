@@ -1,3 +1,28 @@
+/* Light/dark palette, follows the system setting. Header stays dark in both (brand). */
+:root {
+  --bg: #f0f0f0;
+  --text: #213547;
+  --panel: #ffffff;
+  --panel-text: #282828;
+  --border: #282828;
+  --muted: #777;
+  --divider: #ddd;
+  --track: #ddd;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a1a;
+    --text: rgba(255, 255, 255, 0.87);
+    --panel: #2a2a2a;
+    --panel-text: rgba(255, 255, 255, 0.9);
+    --border: #888;
+    --muted: #9a9a9a;
+    --divider: #3a3a3a;
+    --track: #3a3a3a;
+  }
+}
+
 /* Global Reset */
 * {
   margin: 0;
@@ -42,7 +67,8 @@ html, body, #root {
   height: 100%;
   justify-content: flex-start;
   align-items: center;
-  background-color: #f0f0f0;
+  background-color: var(--bg);
+  color: var(--text);
   width: 100%;
 }
 
@@ -132,10 +158,10 @@ footer {
   text-transform: uppercase;
   letter-spacing: 0.4em;
   padding: 0.5rem 0 0.5rem 0.4em; /* left pad offsets the trailing letter-spacing */
-  border: 2px solid #282828;
+  border: 2px solid var(--border);
   border-radius: 8px;
-  background: white;
-  color: #282828;
+  background: var(--panel);
+  color: var(--panel-text);
 }
 
 .join-error {
@@ -145,7 +171,7 @@ footer {
 
 /* Team setup page */
 .team-hint {
-  color: #777;
+  color: var(--muted);
   font-size: 0.95rem;
   margin-top: -0.75rem;
 }
@@ -167,18 +193,34 @@ footer {
   font-size: 1.3rem;
   text-align: center;
   padding: 0.5rem;
-  border: 2px solid #282828;
+  border: 2px solid var(--border);
   border-radius: 8px;
-  background: white;
-  color: #282828;
+  background: var(--panel);
+  color: var(--panel-text);
 }
 
-.team-photo {
-  width: 90px;
-  height: 90px;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 3px solid #282828;
+/* Emoji picker on the team page (custom SVGs will slot in here later) */
+.emoji-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  max-width: min(20rem, 88vw);
+}
+
+.emoji-option {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.6rem;
+  line-height: 1;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.emoji-option.selected {
+  border-color: #ed8b00;
 }
 
 .role-buttons {
@@ -203,10 +245,10 @@ footer {
   font-size: 1.1rem;
   text-align: center;
   padding: 0.4rem;
-  border: 2px solid #282828;
+  border: 2px solid var(--border);
   border-radius: 8px;
-  background: white;
-  color: #282828;
+  background: var(--panel);
+  color: var(--panel-text);
 }
 
 .lobby-area {
@@ -270,7 +312,7 @@ footer {
   position: relative;
   width: min(40rem, 92vw);
   height: 1.6rem;
-  background: #ddd;
+  background: var(--track);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -306,9 +348,9 @@ footer {
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  border: 2px solid #282828;
-  background: white;
-  color: #282828;
+  border: 2px solid var(--border);
+  background: var(--panel);
+  color: var(--panel-text);
   font-size: 1.1rem;
   font-weight: bold;
   cursor: pointer;
@@ -426,7 +468,7 @@ footer {
   display: flex;
   justify-content: space-between;
   padding: 0.6rem 1rem;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--divider);
   font-size: 1.1rem;
 }
 
@@ -434,6 +476,7 @@ footer {
   font-weight: bold;
   font-size: 1.3rem;
   background: #FFD100;
+  color: #282828; /* gold banner stays readable in dark mode */
   border-radius: 8px;
 }
 
@@ -451,9 +494,7 @@ footer {
   margin-bottom: 1rem;
 }
 
-.team-chip img {
-  width: 48px;
-  height: 48px;
-  object-fit: cover;
-  border-radius: 50%;
+.team-chip .team-emoji {
+  font-size: 2rem;
+  line-height: 1;
 }

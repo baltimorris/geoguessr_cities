@@ -105,6 +105,12 @@ function App() {
 
   const roundLocations = locations.filter(l => l.round === currentRound);
 
+  // the runner's own clock for the game they created, so the panel can show reveal controls
+  const adminDeadline = adminGame?.round_started_at
+    ? new Date(adminGame.round_started_at).getTime() + (adminGame.settings?.roundMinutes ?? 15) * 60000
+    : null;
+  const adminRoundOver = adminGame?.status === 'active' && adminDeadline !== null && now >= adminDeadline;
+
   const joinGame = (g) => {
     setGame(g);
     if (g.city) setCity(g.city === 'DC');
@@ -168,7 +174,16 @@ function App() {
     if (!supabase || !adminGame) return;
     const mins = adminGame.settings?.roundMinutes ?? 15;
     const { data } = await supabase.from('games')
-      .update({ round_started_at: new Date(Date.now() - mins * 60000).toISOString() })
+      .update({ round_started_at: new Date(Date.now() - mins * 60000).toISOString(), reveal_step: 0 })
+      .eq('id', adminGame.id).select().single();
+    if (data) setAdminGame(data);
+  };
+
+  // Admin drives the reveal by hand now, one bump per team/location
+  const revealNext = async () => {
+    if (!supabase || !adminGame) return;
+    const { data } = await supabase.from('games')
+      .update({ reveal_step: (adminGame.reveal_step || 0) + 1 })
       .eq('id', adminGame.id).select().single();
     if (data) setAdminGame(data);
   };
@@ -179,6 +194,7 @@ function App() {
       .update({
         current_round: (adminGame.current_round || 1) + 1,
         round_started_at: new Date().toISOString(),
+        reveal_step: 0,
       })
       .eq('id', adminGame.id).select().single();
     if (data) setAdminGame(data);
@@ -204,11 +220,13 @@ function App() {
               onCreateGame = {createGame}
               onStartGame = {startGame}
               onEndRound = {endRound}
+              onRevealNext = {revealNext}
               onNextRound = {nextRound}
               onFinishGame = {finishGame}
               onSeedLocations = {seedLocations}
               generating = {generating}
               adminError = {adminError}
+              adminRoundOver = {adminRoundOver}
               adminLocationCount = {adminLocations.length} />
       <AnimatePresence>
       </AnimatePresence>
@@ -224,7 +242,7 @@ function App() {
         )}
         {role && (
           <div className="team-chip">
-            {team.photo && <img src={team.photo} alt="team" />}
+            {team.emoji && <span className="team-emoji">{team.emoji}</span>}
             <span>Team {team.name}</span>
           </div>
         )}

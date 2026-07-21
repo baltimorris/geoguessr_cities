@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Button from '@mui/material/Button';
 import { supabase } from '../supabase';
 
+// Placeholder set until Drew drops in custom SVGs
+const EMOJI_CHOICES = ['🍺', '🗽', '🚇', '🌭', '🦅', '🏛️', '🎸', '🌮', '🐙', '👑', '🔥', '🎯'];
+
 export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
-  const [photo, setPhoto] = useState(null);
+  const [emoji, setEmoji] = useState(EMOJI_CHOICES[0]);
   const [claimedNames, setClaimedNames] = useState({});
   const [localTaken, setLocalTaken] = useState(false);
   const [oops, setOops] = useState('');
@@ -43,7 +46,7 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
   const pickRole = async (role) => {
     if (!supabase || !game?.id) {
       if (role === 'guessr') localStorage.setItem(claimKey, '1');
-      onReady({ name, photo }, role);
+      onReady({ name, emoji }, role);
       return;
     }
     // team names are case insensitive, "Beb" and "beb" are the same crew
@@ -52,7 +55,7 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
     let teamRow = existing?.[0];
     if (!teamRow) {
       const { data: made } = await supabase.from('teams')
-        .insert({ game_id: game.id, name }).select().single();
+        .insert({ game_id: game.id, name, emoji }).select().single();
       teamRow = made;
     }
     if (!teamRow) {
@@ -70,8 +73,8 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
         return;
       }
     }
-    // keep whatever spelling the team registered with first
-    onReady({ id: teamRow.id, name: teamRow.name, photo }, role);
+    // keep whatever spelling and emoji the team registered with first
+    onReady({ id: teamRow.id, name: teamRow.name, emoji: teamRow.emoji || emoji }, role);
   };
 
   const nameReady = name.length > 0;
@@ -92,19 +95,19 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
         />
       </div>
 
-      <Button variant='outlined' component='label'>
-        {photo ? 'Change team photo' : 'Team photo'}
-        <input
-          type="file"
-          hidden
-          accept="image/*"
-          onChange={e => {
-            const file = e.target.files[0];
-            if (file) setPhoto(URL.createObjectURL(file));
-          }}
-        />
-      </Button>
-      {photo && <img className="team-photo" src={photo} alt="team" />}
+      <p className="team-hint" style={{ marginTop: 0 }}>Pick your team emoji</p>
+      <div className="emoji-picker">
+        {EMOJI_CHOICES.map(e => (
+          <button
+            key={e}
+            type="button"
+            className={`emoji-option ${emoji === e ? 'selected' : ''}`}
+            onClick={() => setEmoji(e)}
+          >
+            {e}
+          </button>
+        ))}
+      </div>
 
       <div className="role-buttons">
         <Button

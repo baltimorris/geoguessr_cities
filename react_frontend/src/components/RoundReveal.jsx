@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, CircleMarker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../supabase';
 import Standings from './Standings';
 import { haversineFt, scoreGuess, distanceLabel, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
-const REVEAL_MS = 1100;   // per guess line
-const LINGER_MS = 2000;   // pause on a finished location
-
 // line colors, farthest guess first
 const LINE_COLORS = ['#bf0d3e', '#ed8b00', '#FFD100', '#00B140', '#009cde', '#919d9d'];
 
+// Only pans/zooms when the points change, and points only change when the admin steps
 function CameraDriver({ points }) {
   const map = useMap();
   useEffect(() => {
     if (!points?.length) return;
     if (points.length === 1) map.flyTo(points[0], 15, { duration: 1 });
-    else map.flyToBounds(points, { padding: [50, 50], duration: 1, maxZoom: 16 });
+    else map.flyToBounds(points, { padding: [60, 60], duration: 1, maxZoom: 16 });
   }, [map, JSON.stringify(points)]);
   return null;
 }
@@ -24,17 +22,19 @@ function CameraDriver({ points }) {
 export default function RoundReveal({ game, locations, isDC }) {
   const round = game?.current_round || 1;
   const totalRounds = game?.settings?.rounds ?? 3;
+  const step = game?.reveal_step || 0; // admin-driven, shared over realtime
   const [data, setData] = useState(null);
-  const [stage, setStage] = useState({ locIdx: 0, shown: 0, done: false });
 
-  const roundLocations = locations.filter(l => l.round === round);
+  const roundLocations = locations
+    .filter(l => l.round === round)
+    .sort((a, b) => a.seq - b.seq);
 
   useEffect(() => {
     if (!supabase || !game?.id) return;
     (async () => {
       const { data: teams } = await supabase.from('teams')
         .select('id,name').eq('game_id', game.id);
-      if (!teams?.length) { setData({ teams: [], byLoc: {}, standings: [] }); return; }
+      if (!teams?.length) { setData({ byLoc: {}, standings: [] }); return; }
       const { data: guesses } = await supabase.from('guesses')
         .select('*').in('team_id', teams.map(t => t.id));
 
@@ -70,28 +70,21 @@ export default function RoundReveal({ game, locations, isDC }) {
         return { name: t.name, roundScore, total };
       }).sort((a, b) => b.total - a.total);
 
-      setData({ teams, byLoc, standings });
+      setData({ byLoc, standings });
     })();
   }, [game?.id, round]);
 
-  // the choreography clock
-  useEffect(() => {
-    if (!data || stage.done || !roundLocations.length) return;
-    const cur = data.byLoc[roundLocations[stage.locIdx]?.seq] || [];
-    let t;
-    if (stage.shown < cur.length) {
-      t = setTimeout(() => setStage(s => ({ ...s, shown: s.shown + 1 })), REVEAL_MS);
-    } else if (stage.locIdx < roundLocations.length - 1) {
-      t = setTimeout(() => setStage(s => ({ locIdx: s.locIdx + 1, shown: 0, done: false })), LINGER_MS);
-    } else {
-      t = setTimeout(() => setStage(s => ({ ...s, done: true })), LINGER_MS);
-    }
-    return () => clearTimeout(t);
-  }, [data, stage, roundLocations.length]);
-
   if (!data) return <p>Getting the reveal ready...</p>;
 
-  if (stage.done) {
+  // Flatten to frames: one per revealed guess, farthest to closest, location by location.
+  // A location with no guesses still gets one frame so the answer pin can show.
+  const frames = [];
+  roundLocations.forEach((loc, li) => {
+    const n = (data.byLoc[loc.seq] || []).length;
+    for (let k = 1; k <= Math.max(1, n); k++) frames.push({ li, shown: Math.min(k, n) });
+  });
+
+  if (!frames.length || step >= frames.length) {
     return (
       <div className="results">
         <h2>Round {round} standings</h2>
@@ -108,14 +101,12 @@ export default function RoundReveal({ game, locations, isDC }) {
     );
   }
 
-  const loc = roundLocations[stage.locIdx];
+  const { li, shown } = frames[step];
+  const loc = roundLocations[li];
   const cur = data.byLoc[loc.seq] || [];
-  const revealed = cur.slice(0, stage.shown);
-  // camera hugs the answer plus whatever hasn't been revealed yet, so it tightens as lines draw
-  const cameraPoints = [
-    [loc.lat, loc.lng],
-    ...cur.slice(Math.max(0, stage.shown - 1)).map(g => [g.lat, g.lng]),
-  ];
+  const revealed = cur.slice(0, shown);
+  // camera hugs the answer plus what's revealed, tightening as the admin steps closer
+  const cameraPoints = [[loc.lat, loc.lng], ...revealed.map(g => [g.lat, g.lng])];
   const lastRevealed = revealed[revealed.length - 1];
 
   return (
@@ -132,22 +123,33 @@ export default function RoundReveal({ game, locations, isDC }) {
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <CameraDriver points={cameraPoints} />
-          <Marker position={[loc.lat, loc.lng]} />
-          {revealed.map((g, i) => (
-            <React.Fragment key={g.team}>
-              <CircleMarker
-                center={[g.lat, g.lng]}
-                radius={8}
-                pathOptions={{ color: LINE_COLORS[i % LINE_COLORS.length], fillOpacity: 0.9 }}
-              />
-              <Polyline
-                positions={[[g.lat, g.lng], [loc.lat, loc.lng]]}
-                pathOptions={{ color: LINE_COLORS[i % LINE_COLORS.length], weight: 3, dashArray: '8 6' }}
-              />
-            </React.Fragment>
-          ))}
+          <Marker position={[loc.lat, loc.lng]}>
+            <Tooltip permanent direction="top" offset={[0, -34]}>Location {loc.seq}</Tooltip>
+          </Marker>
+          {revealed.map((g, i) => {
+            const color = LINE_COLORS[i % LINE_COLORS.length];
+            const rank = cur.length - i; // farthest-first, so closest gets rank 1
+            return (
+              <React.Fragment key={g.team}>
+                <CircleMarker
+                  center={[g.lat, g.lng]}
+                  radius={9}
+                  pathOptions={{ color, fillColor: color, fillOpacity: 0.9 }}
+                >
+                  <Tooltip permanent direction="right" offset={[8, 0]}>
+                    {rank}. {g.team} · {distanceLabel(g.dist)}
+                  </Tooltip>
+                </CircleMarker>
+                <Polyline
+                  positions={[[g.lat, g.lng], [loc.lat, loc.lng]]}
+                  pathOptions={{ color, weight: 3, dashArray: '8 6' }}
+                />
+              </React.Fragment>
+            );
+          })}
         </MapContainer>
       </div>
+      <p className="team-hint">The game runner is walking through the reveal</p>
     </div>
   );
 }

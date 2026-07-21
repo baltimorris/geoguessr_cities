@@ -26,7 +26,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onEndRound, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminLocationCount = 0 }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onEndRound, onRevealNext, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0 }) {
   const isNYC = !isDC;
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminWarned, setAdminWarned] = useState(false);
@@ -225,11 +225,19 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                     <>
                       <p className="admin-game-live">
                         Game <b>{adminGame.code}</b> &mdash; round {adminGame.current_round || 1} of {adminGame.settings?.rounds ?? 3}
+                        {adminRoundOver ? ` · reveal step ${adminGame.reveal_step || 0}` : ''}
                       </p>
                       <div className="admin-round-buttons">
-                        <Button variant='contained' onClick={onEndRound}>
-                          End round
-                        </Button>
+                        {!adminRoundOver && (
+                          <Button variant='contained' onClick={onEndRound}>
+                            End round
+                          </Button>
+                        )}
+                        {adminRoundOver && (
+                          <Button variant='contained' onClick={onRevealNext}>
+                            Reveal next
+                          </Button>
+                        )}
                         <Button
                           variant='contained'
                           disabled={(adminGame.current_round || 1) >= (adminGame.settings?.rounds ?? 3)}
