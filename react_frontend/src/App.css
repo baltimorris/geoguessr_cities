@@ -498,3 +498,15 @@ footer {
   font-size: 2rem;
   line-height: 1;
 }
+
+/* escape hatch if someone else's session got restored on a shared phone */
+.leave-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: normal;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}

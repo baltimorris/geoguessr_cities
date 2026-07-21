@@ -30,6 +30,10 @@ const genCode = () =>
 
 const REVEAL_DELAY_MS = 5000; // "Round over!" breather before the reveal
 
+// so a refresh (or a phone locking) doesn't kick you out of the game
+const SESSION_KEY = 'lg_session';
+const ADMIN_GAME_KEY = 'lg_admin_game';
+
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isDC, setCity] = useState(true);
@@ -46,12 +50,62 @@ function App() {
   const [player, setPlayer] = useState({ tag: '' }); // how you show up in the lobby
   const [localStarted, setLocalStarted] = useState(false); // covers no-supabase mode
   const [now, setNow] = useState(Date.now());
+  const [restoring, setRestoring] = useState(true);
 
   // shared clock tick, everything time-based hangs off this
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Put a player back in their seat after a refresh
+  useEffect(() => {
+    if (!supabase) { setRestoring(false); return; }
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { saved = null; }
+    if (!saved?.gameId) { setRestoring(false); return; }
+    (async () => {
+      const { data: g } = await supabase.from('games').select().eq('id', saved.gameId).maybeSingle();
+      if (g) {
+        setGame(g);
+        setCity((g.city || 'DC') === 'DC');
+        if (saved.team) { setTeam(saved.team); setTeamName(saved.team.name); }
+        if (saved.role) setRole(saved.role);
+        if (saved.player) setPlayer(saved.player);
+      } else {
+        localStorage.removeItem(SESSION_KEY);
+      }
+      setRestoring(false);
+    })();
+  }, []);
+
+  // and keep that seat up to date
+  useEffect(() => {
+    if (!game?.id || !team || !role) return;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ gameId: game.id, team, role, player }));
+  }, [game?.id, team, role, player]);
+
+  // Same idea for the runner, so a reload doesn't strand a game mid-round
+  useEffect(() => {
+    if (!supabase) return;
+    const id = localStorage.getItem(ADMIN_GAME_KEY);
+    if (!id) return;
+    supabase.from('games').select().eq('id', id).maybeSingle()
+      .then(({ data }) => {
+        if (data) setAdminGame(data);
+        else localStorage.removeItem(ADMIN_GAME_KEY);
+      });
+  }, []);
+
+  const leaveGame = () => {
+    localStorage.removeItem(SESSION_KEY);
+    setGame(null);
+    setTeam(null);
+    setRole(null);
+    setTeamName('');
+    setPlayer({ tag: '' });
+    setLocalStarted(false);
+  };
 
   // Until there's a backend, the joinable code is whatever admin set (or DEMO)
   const activeCode = gameSettings.code || 'DEMO';
@@ -133,6 +187,7 @@ function App() {
     setAdminGame(data);
     setAdminLocations([]);
     setGameSettings({ ...gameSettings, code: data.code });
+    localStorage.setItem(ADMIN_GAME_KEY, data.id);
   };
 
   const startGame = async () => {
@@ -151,11 +206,12 @@ function App() {
     setAdminError('');
     setGenerating(true);
     try {
+      // the game's own settings win, the form may have been reset by a reload
       const spots = await generateLocations({
         apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
         city: adminGame.city,
-        rounds: gameSettings.rounds ?? 3,
-        perRound: gameSettings.locationsPerRound ?? 5,
+        rounds: adminGame.settings?.rounds ?? gameSettings.rounds ?? 3,
+        perRound: adminGame.settings?.locationsPerRound ?? gameSettings.locationsPerRound ?? 5,
       });
       if (!spots.length) throw new Error('no street view spots came back');
       const { error } = await supabase.from('locations')
@@ -205,6 +261,7 @@ function App() {
     const { data } = await supabase.from('games')
       .update({ status: 'finished' }).eq('id', adminGame.id).select().single();
     if (data) setAdminGame(data);
+    localStorage.removeItem(ADMIN_GAME_KEY); // frees the runner to start a new one
   };
 
   return (
@@ -231,10 +288,11 @@ function App() {
       <AnimatePresence>
       </AnimatePresence>
       <main>
-        {!game && (
+        {restoring && <p className="team-hint">Reconnecting...</p>}
+        {!restoring && !game && (
           <GameCodeEntry activeCode={activeCode} onJoin={joinGame} />
         )}
-        {game && !role && (
+        {!restoring && game && !role && (
           <TeamSetup game={game}
                      teamName={teamName}
                      setTeamName={setTeamName}
@@ -244,6 +302,7 @@ function App() {
           <div className="team-chip">
             {team.emoji && <span className="team-emoji">{team.emoji}</span>}
             <span>Team {team.name}</span>
+            <button className="leave-link" onClick={leaveGame}>not you?</button>
           </div>
         )}
         {role && !gameStarted && (

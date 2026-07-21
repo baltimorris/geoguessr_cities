@@ -28,8 +28,10 @@ const nycWeightFields = [
 
 export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onStartGame, onEndRound, onRevealNext, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0 }) {
   const isNYC = !isDC;
-  const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [adminWarned, setAdminWarned] = useState(false);
+  // a reload shouldn't hand the runner's phone back to a player
+  const wasAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('lg_admin') === '1';
+  const [adminUnlocked, setAdminUnlocked] = useState(wasAdmin);
+  const [adminWarned, setAdminWarned] = useState(wasAdmin);
   const [pwEntry, setPwEntry] = useState('');
   const [pwError, setPwError] = useState(false);
 
@@ -39,6 +41,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
     if (pwEntry === ADMIN_PASSWORD) {
       setAdminUnlocked(true);
       setPwError(false);
+      localStorage.setItem('lg_admin', '1');
     } else {
       setPwError(true);
     }
@@ -193,7 +196,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                       />
                     </label>
                   </div>
-                  {!adminGame && (
+                  {(!adminGame || adminGame.status === 'finished') && (
                     <Button variant='contained' size='large' onClick={onCreateGame}>
                       Create game
                     </Button>
