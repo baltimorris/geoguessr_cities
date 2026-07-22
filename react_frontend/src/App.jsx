@@ -212,10 +212,11 @@ function App() {
         city: adminGame.city,
         rounds: adminGame.settings?.rounds ?? gameSettings.rounds ?? 3,
         perRound: adminGame.settings?.locationsPerRound ?? gameSettings.locationsPerRound ?? 5,
+        settings: adminGame.settings ?? gameSettings,
       });
       if (!spots.length) throw new Error('no street view spots came back');
       const { error } = await supabase.from('locations')
-        .insert(spots.map(s => ({ ...s, game_id: adminGame.id })));
+        .insert(spots.map(({ area, ...s }) => ({ ...s, game_id: adminGame.id })));
       if (error) throw error;
       setAdminLocations(spots);
     } catch (e) {
