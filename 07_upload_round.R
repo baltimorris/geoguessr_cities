@@ -6,6 +6,9 @@ library(dplyr)
 # Pushes a generated round up to the app so phones can play it.
 # Run after 02_locations.R has written locations.csv for the round.
 # Needs SUPABASE_KEY in .Renviron (the publishable key from the supabase dashboard).
+#
+# Runs on its own, no need to source 00_parameters.R first. If you did source it,
+# whatever it set for city/round_no/output_location is kept.
 
 supabase_url <- "https://qilhfautteplyqnqgfgv.supabase.co"
 supabase_key <- Sys.getenv("SUPABASE_KEY")
@@ -13,7 +16,21 @@ supabase_key <- Sys.getenv("SUPABASE_KEY")
 # >>> set this to the code the admin panel shows before running <<<
 game_code <- "ABCD"
 
-locations_upload <- read_csv(paste0(output_location, "Round ", round_no, "/locations.csv")) %>%
+if (!exists("city")) city <- "DC"          # DC or NYC
+if (!exists("round_no")) round_no <- 1
+if (!exists("output_location")) output_location <- file.path(getwd(), city, "output")
+
+if (supabase_key == "") {
+  stop("No SUPABASE_KEY. Add SUPABASE_KEY=... to ~/.Renviron and restart R.")
+}
+
+locations_csv <- file.path(output_location, paste0("Round ", round_no), "locations.csv")
+if (!file.exists(locations_csv)) {
+  stop("No locations.csv at ", locations_csv,
+       "\nSet output_location to your ", city, "/output folder, or run 02_locations.R first.")
+}
+
+locations_upload <- read_csv(locations_csv, show_col_types = FALSE) %>%
   select(seq = seqnum, lat = latitude, lng = longitude) %>%
   mutate(round = round_no)
 
