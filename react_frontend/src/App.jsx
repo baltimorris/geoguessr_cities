@@ -8,7 +8,7 @@ import GuessrView from './components/GuessrView';
 import MapprView from './components/MapprView';
 import RoundReveal from './components/RoundReveal';
 import Results from './components/Results';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { supabase } from './supabase';
 import { generateLocations } from './generateLocations';
 
@@ -329,18 +329,17 @@ function App() {
         </div>
       )}
       <main>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={screenKey}
-            className="screen"
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -14 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
-          >
-            {screen}
-          </motion.div>
-        </AnimatePresence>
+        {/* keyed so it re-mounts and slides in on each screen change. opacity stays 1
+            the whole time so a stalled animation engine can never hide the game. */}
+        <motion.div
+          key={screenKey}
+          className="screen"
+          initial={{ y: 12 }}
+          animate={{ y: 0 }}
+          transition={{ duration: 0.28, ease: 'easeOut' }}
+        >
+          {screen}
+        </motion.div>
       </main>
     </div>
   );
