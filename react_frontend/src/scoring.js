@@ -34,10 +34,28 @@ export const mergeTeams = (teams) => {
   const byKey = new Map();
   for (const t of teams) {
     const key = (t.name || '').trim().toLowerCase();
-    if (byKey.has(key)) byKey.get(key).ids.push(t.id);
-    else byKey.set(key, { name: t.name, ids: [t.id] });
+    const size = t.size || 1;
+    if (byKey.has(key)) {
+      const m = byKey.get(key);
+      m.ids.push(t.id);
+      m.size = Math.max(m.size, size);
+    } else {
+      byKey.set(key, { name: t.name, ids: [t.id], size });
+    }
   }
   return [...byKey.values()];
 };
+
+// Bigger teams have more brains, so hold them to a higher standard. Not an admin
+// setting on purpose, this is a fixed fairness curve: pairs and solos play at par,
+// every extra head past two shaves ~4% off the team's score.
+const HANDICAP_PAR = 2;
+const HANDICAP_PER_HEAD = 0.04;
+export const sizeHandicap = (size) =>
+  Math.max(0.5, 1 - HANDICAP_PER_HEAD * Math.max(0, (size || 1) - HANDICAP_PAR));
+
+// score for one guess with the team-size handicap already folded in
+export const scoreWithHandicap = (distance, maxPoints, maxDist, size) =>
+  Math.round(scoreGuess(distance, maxPoints, maxDist) * sizeHandicap(size));
 
 export const maxDistForCity = city => (city === 'NYC' ? 130000 : 73000);

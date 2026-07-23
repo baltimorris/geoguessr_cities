@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, CircleMarker, Polyline, Tooltip, useMa
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../supabase';
 import Standings from './Standings';
-import { haversineFt, scoreGuess, distanceLabel, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
+import { haversineFt, scoreWithHandicap, distanceLabel, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
 // line colors, farthest guess first
 const LINE_COLORS = ['#bf0d3e', '#ed8b00', '#FFD100', '#00B140', '#009cde', '#919d9d'];
@@ -33,7 +33,7 @@ export default function RoundReveal({ game, locations, isDC }) {
     if (!supabase || !game?.id) return;
     (async () => {
       const { data: teams } = await supabase.from('teams')
-        .select('id,name').eq('game_id', game.id);
+        .select('id,name,size').eq('game_id', game.id);
       if (!teams?.length) { setData({ byLoc: {}, standings: [] }); return; }
       const { data: guesses } = await supabase.from('guesses')
         .select('*').in('team_id', teams.map(t => t.id));
@@ -50,7 +50,7 @@ export default function RoundReveal({ game, locations, isDC }) {
             const g = latestGuess(guesses || [], t.ids, round, loc.seq);
             if (!g) return null;
             const dist = haversineFt(loc.lat, loc.lng, g.lat, g.lng);
-            return { team: t.name, lat: g.lat, lng: g.lng, dist, score: scoreGuess(dist, maxPoints, maxDist) };
+            return { team: t.name, lat: g.lat, lng: g.lng, dist, score: scoreWithHandicap(dist, maxPoints, maxDist, t.size) };
           })
           .filter(Boolean)
           .sort((a, b) => b.dist - a.dist);
@@ -63,11 +63,11 @@ export default function RoundReveal({ game, locations, isDC }) {
         for (const loc of playedLocs) {
           const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
           if (!g) continue;
-          const s = scoreGuess(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist);
+          const s = scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, t.size);
           total += s;
           if (loc.round === round) roundScore += s;
         }
-        return { name: t.name, roundScore, total };
+        return { name: t.name, roundScore, total, size: t.size };
       }).sort((a, b) => b.total - a.total);
 
       setData({ byLoc, standings });
@@ -134,7 +134,7 @@ export default function RoundReveal({ game, locations, isDC }) {
                 <CircleMarker
                   center={[g.lat, g.lng]}
                   radius={9}
-                  pathOptions={{ color, fillColor: color, fillOpacity: 0.9 }}
+                  pathOptions={{ color, fillColor: color, fillOpacity: 0.9, className: 'reveal-dot' }}
                 >
                   <Tooltip permanent direction="right" offset={[8, 0]}>
                     {rank}. {g.team} · {distanceLabel(g.dist)}
@@ -142,7 +142,7 @@ export default function RoundReveal({ game, locations, isDC }) {
                 </CircleMarker>
                 <Polyline
                   positions={[[g.lat, g.lng], [loc.lat, loc.lng]]}
-                  pathOptions={{ color, weight: 3, dashArray: '8 6' }}
+                  pathOptions={{ color, weight: 3, dashArray: '8 6', className: 'reveal-line' }}
                 />
               </React.Fragment>
             );

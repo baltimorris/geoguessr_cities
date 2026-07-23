@@ -23,7 +23,10 @@ export default function Standings({ rows, renderScore }) {
             ease: 'easeOut',
           }}
         >
-          <span className="results-team">{i === 0 ? '\u{1F3C6} ' : ''}{r.name}</span>
+          <span className="results-team">
+            {i === 0 ? '\u{1F3C6} ' : ''}{r.name}
+            {r.size > 2 && <span className="team-size-tag"> · {r.size} players</span>}
+          </span>
           <span className="results-score">{renderScore(r)}</span>
         </motion.li>
       ))}

@@ -55,7 +55,7 @@
 
 html, body, #root {
   height: 100%;
-  font-family: sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   width: 100%;
   overflow-x: hidden;
 }
@@ -370,6 +370,52 @@ footer {
   outline: 3px solid #ed8b00;
 }
 
+.chip {
+  transition: background 0.2s ease, outline-color 0.15s ease, transform 0.1s ease;
+}
+
+.chip:active {
+  transform: scale(0.92);
+}
+
+.emoji-option {
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.emoji-option:active {
+  transform: scale(0.9);
+}
+
+/* Reveal map: dots pop in, lines fade in as the runner steps */
+.reveal-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dotPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.reveal-line {
+  animation: lineFade 0.5s ease-out;
+}
+
+.reveal .leaflet-tooltip {
+  animation: lineFade 0.4s ease-out;
+}
+
+@keyframes dotPop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+@keyframes lineFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* let leaflet pan/zoom feel less abrupt */
+.leaflet-fade-anim .leaflet-tile {
+  transition: opacity 0.3s linear;
+}
+
 /* Mappr street view */
 .mappr-view {
   display: flex;
@@ -482,6 +528,12 @@ footer {
 
 .results-score {
   font-variant-numeric: tabular-nums;
+}
+
+.team-size-tag {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: normal;
 }
 
 /* Team badge shown once you're in */

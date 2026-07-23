@@ -66,6 +66,14 @@ export default function Lobby({ role, team, player, setPlayer, game }) {
     channelRef.current?.track({ team: team?.name, role, tag: player.tag });
   }, [subscribed, player.tag, role, team?.name]);
 
+  // remember the team's peak headcount for the scoring handicap. lt() means only
+  // the person who bumps the count writes, and it can never shrink.
+  useEffect(() => {
+    const n = members.length;
+    if (!supabase || !team?.id || n < 2) return;
+    supabase.from('teams').update({ size: n }).eq('id', team.id).lt('size', n).then(() => {});
+  }, [members.length, team?.id]);
+
   // your own bubble is local so renaming shows up instantly, teammates come from presence
   const bubbles = [
     { key: myKey, role, tag: player.tag },

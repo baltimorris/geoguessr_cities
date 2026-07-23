@@ -45,7 +45,7 @@
 /* Main header text */
 .header-text {
   color: white;
-  font-family: Arial;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 2rem; /* Adjust font size */
   font-weight: bold;
   margin-left: 20px; /* Fixed distance from the bars */
@@ -99,7 +99,7 @@
 }
 
 .settings-pane h2 {
-  font-family: Arial;
+  font-family: 'Inter', system-ui, sans-serif;
   font-weight: bold;
 }
 

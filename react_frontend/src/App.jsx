@@ -8,7 +8,7 @@ import GuessrView from './components/GuessrView';
 import MapprView from './components/MapprView';
 import RoundReveal from './components/RoundReveal';
 import Results from './components/Results';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from './supabase';
 import { generateLocations } from './generateLocations';
 
@@ -265,6 +265,41 @@ function App() {
     localStorage.removeItem(ADMIN_GAME_KEY); // frees the runner to start a new one
   };
 
+  // one screen at a time, keyed so framer-motion can cross-fade between them
+  let screenKey = 'code';
+  let screen = <GameCodeEntry activeCode={activeCode} onJoin={joinGame} />;
+  if (restoring) {
+    screenKey = 'restoring';
+    screen = <p className="team-hint">Reconnecting...</p>;
+  } else if (game && !role) {
+    screenKey = 'team';
+    screen = <TeamSetup game={game} teamName={teamName} setTeamName={setTeamName}
+                        onReady={(t, r) => { setTeam(t); setRole(r); }} />;
+  } else if (role && !gameStarted) {
+    screenKey = 'lobby';
+    screen = <Lobby role={role} team={team} player={player} setPlayer={setPlayer} game={game} />;
+  } else if (role && gameOver) {
+    screenKey = 'results';
+    screen = <Results game={game} locations={locations} />;
+  } else if (role && gameStarted && phase === 'roundover') {
+    screenKey = 'roundover';
+    screen = (
+      <div className="round-over">
+        <h2>Round over!</h2>
+        <p className="team-hint">Let's see how everyone did</p>
+      </div>
+    );
+  } else if (role && gameStarted && phase === 'reveal') {
+    screenKey = 'reveal';
+    screen = <RoundReveal game={game} locations={locations} isDC={isDC} />;
+  } else if (role === 'guessr' && gameStarted) {
+    screenKey = 'guessr';
+    screen = <GuessrView game={game} team={team} roundLocations={roundLocations} deadline={deadline} now={now} />;
+  } else if (role === 'mappr' && gameStarted) {
+    screenKey = 'mappr';
+    screen = <MapprView roundLocations={roundLocations} isDC={isDC} currentRound={currentRound} />;
+  }
+
   return (
     <div className="app-container">
       <Header settingsOpen={settingsOpen && !hideSettings}
@@ -286,47 +321,26 @@ function App() {
               adminError = {adminError}
               adminRoundOver = {adminRoundOver}
               adminLocationCount = {adminLocations.length} />
-      <AnimatePresence>
-      </AnimatePresence>
+      {role && (
+        <div className="team-chip">
+          {team.emoji && <span className="team-emoji">{team.emoji}</span>}
+          <span>Team {team.name}</span>
+          <button className="leave-link" onClick={leaveGame}>not you?</button>
+        </div>
+      )}
       <main>
-        {restoring && <p className="team-hint">Reconnecting...</p>}
-        {!restoring && !game && (
-          <GameCodeEntry activeCode={activeCode} onJoin={joinGame} />
-        )}
-        {!restoring && game && !role && (
-          <TeamSetup game={game}
-                     teamName={teamName}
-                     setTeamName={setTeamName}
-                     onReady={(t, r) => { setTeam(t); setRole(r); }} />
-        )}
-        {role && (
-          <div className="team-chip">
-            {team.emoji && <span className="team-emoji">{team.emoji}</span>}
-            <span>Team {team.name}</span>
-            <button className="leave-link" onClick={leaveGame}>not you?</button>
-          </div>
-        )}
-        {role && !gameStarted && (
-          <Lobby role={role} team={team} player={player} setPlayer={setPlayer} game={game} />
-        )}
-        {role && gameOver && (
-          <Results game={game} locations={locations} />
-        )}
-        {role && gameStarted && !gameOver && phase === 'roundover' && (
-          <div className="round-over">
-            <h2>Round over!</h2>
-            <p className="team-hint">Let's see how everyone did</p>
-          </div>
-        )}
-        {role && gameStarted && !gameOver && phase === 'reveal' && (
-          <RoundReveal game={game} locations={locations} isDC={isDC} />
-        )}
-        {role === 'guessr' && gameStarted && !gameOver && phase === 'guessing' && (
-          <GuessrView game={game} team={team} roundLocations={roundLocations} deadline={deadline} now={now} />
-        )}
-        {role === 'mappr' && gameStarted && !gameOver && phase === 'guessing' && (
-          <MapprView roundLocations={roundLocations} isDC={isDC} currentRound={currentRound} />
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={screenKey}
+            className="screen"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -14 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+          >
+            {screen}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
