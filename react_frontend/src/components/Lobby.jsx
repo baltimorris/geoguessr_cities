@@ -50,8 +50,8 @@ export default function Lobby({ role, team, player, setPlayer, game }) {
       });
     channelRef.current = channel;
     // presence events can get dropped on flaky bar wifi, so re-read the roster
-    // every few seconds and let the lobby heal itself
-    const poll = setInterval(refresh, 3000);
+    // often and let the lobby heal itself
+    const poll = setInterval(refresh, 2000);
     return () => {
       clearInterval(poll);
       setSubscribed(false);

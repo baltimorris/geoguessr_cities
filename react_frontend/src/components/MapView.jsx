@@ -1,6 +1,7 @@
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, useMapEvents } from 'react-leaflet';
 import { useState } from 'react';
 import 'leaflet/dist/leaflet.css';
+import ThemedTiles from './ThemedTiles';
 
 export default function MapView({ isDC = true, onPick, position }) {
   const [internal, setInternal] = useState(null);
@@ -23,9 +24,10 @@ export default function MapView({ isDC = true, onPick, position }) {
         key={isDC ? 'DC' : 'NYC'}
         center={isDC ? [38.9072, -77.0369] : [40.7128, -74.0060]}
         zoom={isDC ? 13 : 12}
+        zoomSnap={0}
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <ThemedTiles />
         <ClickHandler />
         {shown && <Marker position={shown} />}
       </MapContainer>

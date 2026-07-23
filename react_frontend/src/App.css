@@ -478,6 +478,87 @@ footer {
   width: 100%;
 }
 
+.reveal-map {
+  position: relative;
+  overflow: hidden;
+}
+
+/* bullseye at the true location, high contrast on light or dark tiles */
+.answer-icon { position: relative; }
+.answer-ring {
+  position: absolute;
+  inset: 0;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+  /* a few pulses to draw the eye, then rest, so we're not repainting forever */
+  animation: answerPulse 1.7s ease-out 3;
+}
+.answer-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 3px solid #111;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+@keyframes answerPulse {
+  0%   { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* reveal tooltips as clean color-coded pills, no leaflet chrome */
+.reveal-tt.leaflet-tooltip {
+  background: rgba(28, 28, 30, 0.92);
+  color: #fff;
+  border: none;
+  border-left: 4px solid #888;
+  border-radius: 8px;
+  padding: 3px 9px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+}
+.reveal-tt.leaflet-tooltip::before { display: none; }
+.tt-answer.leaflet-tooltip { border-left-color: #fff; font-weight: 700; }
+.tt-0.leaflet-tooltip { border-left-color: #bf0d3e; }
+.tt-1.leaflet-tooltip { border-left-color: #ed8b00; }
+.tt-2.leaflet-tooltip { border-left-color: #009cde; }
+.tt-3.leaflet-tooltip { border-left-color: #00B140; }
+.tt-4.leaflet-tooltip { border-left-color: #8e44ad; }
+.tt-5.leaflet-tooltip { border-left-color: #919d9d; }
+
+/* arrows for teams that fell off-screen on the closest zoom */
+.edge-arrow {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 500;
+  pointer-events: none;
+}
+.edge-arrow-head {
+  font-size: 1.3rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+.edge-arrow-label {
+  background: rgba(28, 28, 30, 0.92);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border-left: 3px solid #888;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
 /* In-round screens */
 .guessr-view {
   display: flex;

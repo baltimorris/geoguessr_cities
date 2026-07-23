@@ -1,22 +1,85 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, Marker, CircleMarker, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import ThemedTiles from './ThemedTiles';
 import { supabase } from '../supabase';
 import Standings from './Standings';
 import { haversineFt, scoreWithHandicap, distanceLabel, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
 // line colors, farthest guess first
-const LINE_COLORS = ['#bf0d3e', '#ed8b00', '#FFD100', '#00B140', '#009cde', '#919d9d'];
+const LINE_COLORS = ['#bf0d3e', '#ed8b00', '#009cde', '#00B140', '#8e44ad', '#919d9d'];
 
-// Only pans/zooms when the points change, and points only change when the admin steps
-function CameraDriver({ points }) {
+// bullseye divIcon for the true location
+const answerIcon = L.divIcon({
+  className: 'answer-icon',
+  html: '<div class="answer-ring"></div><div class="answer-dot"></div>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});
+
+// Camera only moves when its points change, i.e. when the admin steps.
+// On the closest reveal it dives in tight even if the rest fall off-screen.
+function CameraDriver({ points, tight }) {
   const map = useMap();
   useEffect(() => {
     if (!points?.length) return;
-    if (points.length === 1) map.flyTo(points[0], 15, { duration: 1 });
-    else map.flyToBounds(points, { padding: [60, 60], duration: 1, maxZoom: 16 });
-  }, [map, JSON.stringify(points)]);
+    if (points.length === 1) {
+      map.flyTo(points[0], 15, { duration: 0.9 });
+    } else {
+      map.flyToBounds(points, {
+        padding: tight ? [80, 80] : [55, 55],
+        maxZoom: tight ? 17 : 15,
+        duration: tight ? 0.7 : 1.1,
+        easeLinearity: 0.25,
+      });
+    }
+  }, [map, JSON.stringify(points), tight]);
   return null;
+}
+
+// Bumps a tick on every map move so the edge arrows recompute in sync
+function MapBus({ onMap, onMove }) {
+  const map = useMap();
+  useEffect(() => { onMap(map); }, [map, onMap]);
+  useMapEvents({ move: onMove, zoom: onMove, resize: onMove });
+  return null;
+}
+
+// where a ray from center leaves the padded viewport rectangle
+function edgePoint(cx, cy, dx, dy, w, h, margin) {
+  let scale = Infinity;
+  if (dx > 0) scale = Math.min(scale, (w - margin - cx) / dx);
+  if (dx < 0) scale = Math.min(scale, (margin - cx) / dx);
+  if (dy > 0) scale = Math.min(scale, (h - margin - cy) / dy);
+  if (dy < 0) scale = Math.min(scale, (margin - cy) / dy);
+  return { x: cx + dx * scale, y: cy + dy * scale };
+}
+
+// arrows at the map edge pointing to revealed teams that scrolled off-screen
+function EdgeArrows({ map, points }) {
+  if (!map) return null;
+  const size = map.getSize();
+  const cx = size.x / 2, cy = size.y / 2;
+  return points.map((p, i) => {
+    const pt = map.latLngToContainerPoint([p.lat, p.lng]);
+    const inView = pt.x >= 0 && pt.x <= size.x && pt.y >= 0 && pt.y <= size.y;
+    if (inView) return null;
+    const dx = pt.x - cx, dy = pt.y - cy;
+    const edge = edgePoint(cx, cy, dx, dy, size.x, size.y, 34);
+    const color = LINE_COLORS[i % LINE_COLORS.length];
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+    // keep the label on the interior side so it doesn't run off the map
+    const dir = dx > 0 ? 'row-reverse' : 'row';
+    return (
+      <div key={p.team} className="edge-arrow" style={{ left: edge.x, top: edge.y, flexDirection: dir }}>
+        <span className="edge-arrow-head" style={{ transform: `rotate(${angle}deg)`, color }}>➤</span>
+        <span className="edge-arrow-label" style={{ borderColor: color }}>
+          {p.team} · {distanceLabel(p.dist)}
+        </span>
+      </div>
+    );
+  });
 }
 
 export default function RoundReveal({ game, locations, isDC }) {
@@ -24,6 +87,8 @@ export default function RoundReveal({ game, locations, isDC }) {
   const totalRounds = game?.settings?.rounds ?? 3;
   const step = game?.reveal_step || 0; // admin-driven, shared over realtime
   const [data, setData] = useState(null);
+  const [map, setMap] = useState(null);
+  const [, setTick] = useState(0);
 
   const roundLocations = locations
     .filter(l => l.round === round)
@@ -42,7 +107,6 @@ export default function RoundReveal({ game, locations, isDC }) {
       const maxDist = maxDistForCity(game.city);
       const merged = mergeTeams(teams);
 
-      // per location of this round: each team's latest guess, farthest first
       const byLoc = {};
       for (const loc of roundLocations) {
         byLoc[loc.seq] = merged
@@ -56,7 +120,6 @@ export default function RoundReveal({ game, locations, isDC }) {
           .sort((a, b) => b.dist - a.dist);
       }
 
-      // cumulative standings through this round
       const playedLocs = locations.filter(l => l.round <= round);
       const standings = merged.map(t => {
         let total = 0, roundScore = 0;
@@ -76,8 +139,6 @@ export default function RoundReveal({ game, locations, isDC }) {
 
   if (!data) return <p>Getting the reveal ready...</p>;
 
-  // Flatten to frames: one per revealed guess, farthest to closest, location by location.
-  // A location with no guesses still gets one frame so the answer pin can show.
   const frames = [];
   roundLocations.forEach((loc, li) => {
     const n = (data.byLoc[loc.seq] || []).length;
@@ -105,9 +166,13 @@ export default function RoundReveal({ game, locations, isDC }) {
   const loc = roundLocations[li];
   const cur = data.byLoc[loc.seq] || [];
   const revealed = cur.slice(0, shown);
-  // camera hugs the answer plus what's revealed, tightening as the admin steps closer
-  const cameraPoints = [[loc.lat, loc.lng], ...revealed.map(g => [g.lat, g.lng])];
   const lastRevealed = revealed[revealed.length - 1];
+  const isClosest = shown === cur.length && cur.length > 0; // final guess for this spot
+
+  // tight on answer+closest for the finale, otherwise frame everything shown
+  const cameraPoints = isClosest
+    ? [[loc.lat, loc.lng], [revealed[revealed.length - 1].lat, revealed[revealed.length - 1].lng]]
+    : [[loc.lat, loc.lng], ...revealed.map(g => [g.lat, g.lng])];
 
   return (
     <div className="reveal">
@@ -115,29 +180,34 @@ export default function RoundReveal({ game, locations, isDC }) {
         Round {round} reveal &mdash; location {loc.seq}
         {lastRevealed && ` · ${lastRevealed.team}: ${distanceLabel(lastRevealed.dist)}`}
       </p>
-      <div className="map-container">
+      <div className="map-container reveal-map">
         <MapContainer
           center={isDC ? [38.9072, -77.0369] : [40.7128, -74.0060]}
           zoom={12}
+          zoomSnap={0}
+          zoomControl={false}
           style={{ height: '100%', width: '100%' }}
         >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <CameraDriver points={cameraPoints} />
-          <Marker position={[loc.lat, loc.lng]}>
-            <Tooltip permanent direction="top" offset={[0, -34]}>Location {loc.seq}</Tooltip>
+          <ThemedTiles />
+          <MapBus onMap={setMap} onMove={() => setTick(t => t + 1)} />
+          <CameraDriver points={cameraPoints} tight={isClosest} />
+          <Marker position={[loc.lat, loc.lng]} icon={answerIcon}>
+            <Tooltip permanent direction="top" offset={[0, -16]} className="reveal-tt tt-answer">
+              Location {loc.seq}
+            </Tooltip>
           </Marker>
           {revealed.map((g, i) => {
             const color = LINE_COLORS[i % LINE_COLORS.length];
-            const rank = cur.length - i; // farthest-first, so closest gets rank 1
+            const rank = cur.length - i; // farthest-first, closest gets rank 1
             return (
               <React.Fragment key={g.team}>
                 <CircleMarker
                   center={[g.lat, g.lng]}
                   radius={9}
-                  pathOptions={{ color, fillColor: color, fillOpacity: 0.9, className: 'reveal-dot' }}
+                  pathOptions={{ color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, className: 'reveal-dot' }}
                 >
-                  <Tooltip permanent direction="right" offset={[8, 0]}>
-                    {rank}. {g.team} · {distanceLabel(g.dist)}
+                  <Tooltip permanent direction="right" offset={[10, 0]} className={`reveal-tt tt-${i}`}>
+                    <b>{rank}.</b> {g.team} · {distanceLabel(g.dist)}
                   </Tooltip>
                 </CircleMarker>
                 <Polyline
@@ -148,6 +218,7 @@ export default function RoundReveal({ game, locations, isDC }) {
             );
           })}
         </MapContainer>
+        <EdgeArrows map={map} points={revealed} />
       </div>
       <p className="team-hint">The game runner is walking through the reveal</p>
     </div>
