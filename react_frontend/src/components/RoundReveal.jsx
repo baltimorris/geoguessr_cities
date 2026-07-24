@@ -97,7 +97,10 @@ export default function RoundReveal({ game, locations, isDC }) {
 
       const maxPoints = game.settings?.maxPoints || 5000;
       const maxDist = maxDistForCity(game.city);
+      const handicap = game.settings?.handicap !== false;
+      const cap = game.settings?.maxTeamSize || Infinity;
       const merged = mergeTeams(teams);
+      const sizeOf = t => Math.min(t.size, cap);
 
       const byLoc = {};
       for (const loc of roundLocations) {
@@ -106,7 +109,7 @@ export default function RoundReveal({ game, locations, isDC }) {
             const g = latestGuess(guesses || [], t.ids, round, loc.seq);
             if (!g) return null;
             const dist = haversineFt(loc.lat, loc.lng, g.lat, g.lng);
-            return { team: t.name, lat: g.lat, lng: g.lng, dist, score: scoreWithHandicap(dist, maxPoints, maxDist, t.size) };
+            return { team: t.name, lat: g.lat, lng: g.lng, dist, score: scoreWithHandicap(dist, maxPoints, maxDist, sizeOf(t), handicap) };
           })
           .filter(Boolean)
           .sort((a, b) => b.dist - a.dist);
@@ -118,11 +121,11 @@ export default function RoundReveal({ game, locations, isDC }) {
         for (const loc of playedLocs) {
           const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
           if (!g) continue;
-          const s = scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, t.size);
+          const s = scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, sizeOf(t), handicap);
           total += s;
           if (loc.round === round) roundScore += s;
         }
-        return { name: t.name, roundScore, total, size: t.size };
+        return { name: t.name, roundScore, total, size: sizeOf(t) };
       }).sort((a, b) => b.total - a.total);
 
       setData({ byLoc, standings });
@@ -170,7 +173,7 @@ export default function RoundReveal({ game, locations, isDC }) {
     <div className="reveal">
       <p className="round-progress">
         Round {round} reveal &mdash; location {loc.seq}
-        {lastRevealed && ` · ${lastRevealed.team}: ${distanceLabel(lastRevealed.dist)}`}
+        {lastRevealed && ` · ${lastRevealed.team}: ${distanceLabel(lastRevealed.dist)} · ${lastRevealed.score.toLocaleString()} pts`}
       </p>
       <div className="map-container reveal-map">
         <MapContainer
@@ -199,7 +202,7 @@ export default function RoundReveal({ game, locations, isDC }) {
                   pathOptions={{ color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, className: 'reveal-dot' }}
                 >
                   <Tooltip permanent direction="auto" offset={[10, 0]} className={`reveal-tt tt-${i}`}>
-                    <b>{rank}.</b> {g.team} · {distanceLabel(g.dist)}
+                    <b>{rank}.</b> {g.team} · {distanceLabel(g.dist)} · {g.score.toLocaleString()} pts
                   </Tooltip>
                 </CircleMarker>
                 <Polyline

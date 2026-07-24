@@ -17,15 +17,18 @@ export default function Results({ game, locations }) {
 
       const maxPoints = game.settings?.maxPoints || 5000;
       const maxDist = maxDistForCity(game.city);
+      const handicap = game.settings?.handicap !== false;
+      const cap = game.settings?.maxTeamSize || Infinity;
 
       const scored = mergeTeams(teams).map(t => {
+        const size = Math.min(t.size, cap);
         let total = 0;
         for (const loc of locations) {
           const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
           if (!g) continue;
-          total += scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, t.size);
+          total += scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, size, handicap);
         }
-        return { name: t.name, score: total, size: t.size };
+        return { name: t.name, score: total, size };
       }).sort((a, b) => b.score - a.score);
       setRows(scored);
     })();

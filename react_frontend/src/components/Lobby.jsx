@@ -66,13 +66,15 @@ export default function Lobby({ role, team, player, setPlayer, game }) {
     channelRef.current?.track({ team: team?.name, role, tag: player.tag });
   }, [subscribed, player.tag, role, team?.name]);
 
-  // remember the team's peak headcount for the scoring handicap. lt() means only
-  // the person who bumps the count writes, and it can never shrink.
+  // keep the team's live headcount for the scoring handicap. writing the current
+  // count (not a peak) means it drops when someone leaves, e.g. a duplicate tab.
+  // frozen once the game starts so the mass exodus into the round doesn't zero it.
   useEffect(() => {
     const n = members.length;
-    if (!supabase || !team?.id || n < 2) return;
-    supabase.from('teams').update({ size: n }).eq('id', team.id).lt('size', n).then(() => {});
-  }, [members.length, team?.id]);
+    const cap = game?.settings?.maxTeamSize || 99;
+    if (!supabase || !team?.id || n < 1 || game?.status !== 'lobby') return;
+    supabase.from('teams').update({ size: Math.min(n, cap) }).eq('id', team.id).then(() => {});
+  }, [members.length, team?.id, game?.status]);
 
   // your own bubble is local so renaming shows up instantly, teammates come from presence
   const bubbles = [

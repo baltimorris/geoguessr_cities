@@ -19,6 +19,8 @@ const defaultGameSettings = {
   rounds: 3,
   locationsPerRound: 5,
   roundMinutes: 15,
+  maxTeamSize: 5,
+  handicap: true, // scale scores down for bigger teams
   dc: { at_large: 50, downtown: 15, greater_central: 25, metro: 10, metro_distance: 150 },
   nyc: { manhattan: 43, brooklyn: 32, queens: 12, bronx: 3, subway: 10, subway_distance: 100 },
 };

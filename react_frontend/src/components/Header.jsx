@@ -9,6 +9,24 @@ const barClasses = ['RD', 'OR', 'BL', 'YL', 'GR', 'SV'];
 
 const ADMIN_PASSWORD = 'pylon'; // temp until there's a real backend
 
+// little ? that reveals a hint on hover or tap (tap matters on phones)
+function InfoBadge({ text }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      className="info-badge"
+      tabIndex={0}
+      onClick={() => setOpen(o => !o)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onBlur={() => setOpen(false)}
+    >
+      ?
+      {open && <span className="info-pop">{text}</span>}
+    </span>
+  );
+}
+
 // key in gameSettings -> label, mirrors the percents in 00_parameters.R
 const dcWeightFields = [
   ['at_large', 'At-large %'],
@@ -108,7 +126,20 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
           <input type="number" value={gameSettings.roundMinutes}
             onChange={e => setGameSettings({ ...gameSettings, roundMinutes: Number(e.target.value) })} />
         </label>
+        <label className="admin-field">
+          Max team size
+          <input type="number" min="1" value={gameSettings.maxTeamSize}
+            onChange={e => setGameSettings({ ...gameSettings, maxTeamSize: Math.max(1, Number(e.target.value)) })} />
+        </label>
       </div>
+      <label className="admin-field handicap-row">
+        <Switch
+          checked={gameSettings.handicap}
+          onChange={e => setGameSettings({ ...gameSettings, handicap: e.target.checked })}
+        />
+        Team size handicap
+        <InfoBadge text="When on, bigger teams score a bit lower: solos and pairs play at par, then every extra player past two shaves ~4% off that team's points." />
+      </label>
       <div className="city-question">{isDC ? 'DC' : 'NYC'} location weights</div>
       <div className="admin-grid">
         {(isDC ? dcWeightFields : nycWeightFields).map(([key, label]) => (

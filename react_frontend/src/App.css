@@ -643,12 +643,31 @@ footer {
   font-size: 1.1rem;
 }
 
-.results-list li.winner {
+/* gold winner gets a solid fill; silver and bronze just get an outline */
+.results-list li.gold {
   font-weight: bold;
   font-size: 1.3rem;
   background: #FFD100;
   color: #282828; /* gold banner stays readable in dark mode */
+  border: none;
   border-radius: 8px;
+}
+
+.results-list li.silver,
+.results-list li.bronze {
+  font-weight: 600;
+  font-size: 1.2rem;
+  border-radius: 8px;
+}
+
+.results-list li.silver {
+  border: 2px solid #b8bcc4;
+  box-shadow: inset 0 0 0 1px rgba(184, 188, 196, 0.35);
+}
+
+.results-list li.bronze {
+  border: 2px solid #c1824a;
+  box-shadow: inset 0 0 0 1px rgba(193, 130, 74, 0.35);
 }
 
 .results-score {

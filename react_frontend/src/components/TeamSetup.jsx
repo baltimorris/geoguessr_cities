@@ -7,25 +7,27 @@ const EMOJI_CHOICES = ['🍺', '🗽', '🚇', '🌭', '🦅', '🏛️', '🎸'
 
 export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
   const [emoji, setEmoji] = useState(EMOJI_CHOICES[0]);
-  const [claimedNames, setClaimedNames] = useState({});
+  const [teams, setTeams] = useState({}); // nameLower -> { claimed, size }
   const [localTaken, setLocalTaken] = useState(false);
   const [oops, setOops] = useState('');
 
   const name = teamName.trim();
+  const cap = game?.settings?.maxTeamSize || Infinity;
 
-  // Live view of which teams already have a guessr
+  // Live view of each team's guessr claim and headcount
   useEffect(() => {
     if (!supabase || !game?.id) return;
-    supabase.from('teams').select('name,guessr_claimed').eq('game_id', game.id)
+    const rowToEntry = row => [row.name.toLowerCase(), { claimed: row.guessr_claimed, size: row.size || 1 }];
+    supabase.from('teams').select('name,guessr_claimed,size').eq('game_id', game.id)
       .then(({ data }) => {
-        if (data) setClaimedNames(Object.fromEntries(data.map(t => [t.name.toLowerCase(), t.guessr_claimed])));
+        if (data) setTeams(Object.fromEntries(data.map(rowToEntry)));
       });
     const channel = supabase.channel(`teams-${game.id}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'teams', filter: `game_id=eq.${game.id}` },
         payload => {
           const row = payload.new;
-          if (row?.name) setClaimedNames(prev => ({ ...prev, [row.name.toLowerCase()]: row.guessr_claimed }));
+          if (row?.name) setTeams(prev => ({ ...prev, ...Object.fromEntries([rowToEntry(row)]) }));
         })
       .subscribe();
     return () => supabase.removeChannel(channel);
@@ -41,7 +43,9 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
     return () => window.removeEventListener('storage', check);
   }, [claimKey]);
 
-  const guessrTaken = supabase ? !!claimedNames[name.toLowerCase()] : localTaken;
+  const teamInfo = teams[name.toLowerCase()];
+  const guessrTaken = supabase ? !!teamInfo?.claimed : localTaken;
+  const teamFull = supabase && teamInfo && teamInfo.size >= cap;
 
   const pickRole = async (role) => {
     if (!supabase || !game?.id) {
@@ -69,7 +73,7 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
         .eq('id', teamRow.id).eq('guessr_claimed', false)
         .select();
       if (!claimed?.length) {
-        setClaimedNames(prev => ({ ...prev, [name.toLowerCase()]: true }));
+        setTeams(prev => ({ ...prev, [name.toLowerCase()]: { ...prev[name.toLowerCase()], claimed: true } }));
         return;
       }
     }
@@ -110,13 +114,14 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
       </div>
 
       <div className="role-buttons">
-        <Btn className="btn-lg" disabled={!nameReady || guessrTaken} onClick={() => pickRole('guessr')}>
+        <Btn className="btn-lg" disabled={!nameReady || guessrTaken || teamFull} onClick={() => pickRole('guessr')}>
           Be the Guessr
         </Btn>
-        {guessrTaken && <p className="team-hint">Your team already has a guessr</p>}
-        <Btn className="btn-lg" variant="blue" disabled={!nameReady} onClick={() => pickRole('mappr')}>
+        {guessrTaken && !teamFull && <p className="team-hint">Your team already has a guessr</p>}
+        <Btn className="btn-lg" variant="blue" disabled={!nameReady || teamFull} onClick={() => pickRole('mappr')}>
           Be a Mappr
         </Btn>
+        {teamFull && <p className="join-error">Team {name} is full (max {cap} players)</p>}
         {oops && <p className="join-error">{oops}</p>}
       </div>
     </div>

@@ -8,13 +8,16 @@ const delayFor = (i, n) => {
   return quick + (2 - i) * 0.6;
 };
 
+const MEDAL_CLASS = ['gold', 'silver', 'bronze'];
+const MEDAL_EMOJI = ['\u{1F3C6}', '\u{1F948}', '\u{1F949}']; // trophy, silver, bronze
+
 export default function Standings({ rows, renderScore }) {
   return (
     <ol className="results-list">
       {rows.map((r, i) => (
         <motion.li
           key={r.name}
-          className={i === 0 ? 'winner' : ''}
+          className={MEDAL_CLASS[i] || ''}
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
@@ -24,7 +27,7 @@ export default function Standings({ rows, renderScore }) {
           }}
         >
           <span className="results-team">
-            {i === 0 ? '\u{1F3C6} ' : ''}{r.name}
+            {i < 3 ? `${MEDAL_EMOJI[i]} ` : ''}{r.name}
             {r.size > 2 && <span className="team-size-tag"> · {r.size} players</span>}
           </span>
           <span className="results-score">{renderScore(r)}</span>
