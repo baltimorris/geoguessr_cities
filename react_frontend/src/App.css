@@ -30,6 +30,42 @@
   box-sizing: border-box;
   justify-content: center;
 }
+
+/* App-wide button: a chunky pressable "metro" button, no Material chrome */
+.btn {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  border: none;
+  border-radius: 12px;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+  color: #fff;
+  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.btn-lg { font-size: 1.15rem; padding: 0.9rem 1.8rem; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn:not(:disabled):hover { filter: brightness(1.06); }
+.btn:not(:disabled):active { transform: translateY(3px); }
+
+/* primary = metro blue, with a solid drop that compresses on press */
+.btn-primary { background: #009cde; box-shadow: 0 4px 0 #036c9b; }
+.btn-primary:not(:disabled):active { box-shadow: 0 1px 0 #036c9b; }
+.btn-blue { background: #4a7fd6; box-shadow: 0 4px 0 #33589a; }
+.btn-blue:not(:disabled):active { box-shadow: 0 1px 0 #33589a; }
+.btn-danger { background: #bf0d3e; box-shadow: 0 4px 0 #85092b; }
+.btn-danger:not(:disabled):active { box-shadow: 0 1px 0 #85092b; }
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 2px solid var(--border);
+  box-shadow: none;
+  padding: calc(0.7rem - 2px) calc(1.4rem - 2px);
+}
+.btn-outline:not(:disabled):active { transform: translateY(2px); }
 .settings-button {
   position: absolute;
   top: 20px;
@@ -393,8 +429,12 @@ footer {
   animation: dotPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* line draws itself from the answer out to the guess. big dash so any on-screen
+   length is covered, offset animates to 0 = the stroke sweeps into view. */
 .reveal-line {
-  animation: lineFade 0.5s ease-out;
+  stroke-dasharray: 2500;
+  stroke-dashoffset: 2500;
+  animation: drawLine 0.65s ease-out forwards;
 }
 
 .reveal .leaflet-tooltip {
@@ -409,6 +449,10 @@ footer {
 @keyframes lineFade {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+@keyframes drawLine {
+  to { stroke-dashoffset: 0; }
 }
 
 /* let leaflet pan/zoom feel less abrupt */
@@ -510,27 +554,27 @@ footer {
   100% { transform: scale(1.5); opacity: 0; }
 }
 
-/* reveal tooltips as clean color-coded pills, no leaflet chrome */
+/* reveal tooltips: rounded pills, full outline in the team color, fill + text
+   follow the app theme so they read on light or dark tiles */
 .reveal-tt.leaflet-tooltip {
-  background: rgba(28, 28, 30, 0.92);
-  color: #fff;
-  border: none;
-  border-left: 4px solid #888;
-  border-radius: 8px;
-  padding: 3px 9px;
+  background: var(--panel);
+  color: var(--text);
+  border: 2px solid var(--tt-c, #888);
+  border-radius: 999px;
+  padding: 3px 11px;
   font-size: 0.8rem;
-  font-weight: 500;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  font-weight: 600;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
 }
 .reveal-tt.leaflet-tooltip::before { display: none; }
-.tt-answer.leaflet-tooltip { border-left-color: #fff; font-weight: 700; }
-.tt-0.leaflet-tooltip { border-left-color: #bf0d3e; }
-.tt-1.leaflet-tooltip { border-left-color: #ed8b00; }
-.tt-2.leaflet-tooltip { border-left-color: #009cde; }
-.tt-3.leaflet-tooltip { border-left-color: #00B140; }
-.tt-4.leaflet-tooltip { border-left-color: #8e44ad; }
-.tt-5.leaflet-tooltip { border-left-color: #919d9d; }
+.tt-answer.leaflet-tooltip { --tt-c: var(--text); font-weight: 700; }
+.tt-0.leaflet-tooltip { --tt-c: #bf0d3e; }
+.tt-1.leaflet-tooltip { --tt-c: #ed8b00; }
+.tt-2.leaflet-tooltip { --tt-c: #009cde; }
+.tt-3.leaflet-tooltip { --tt-c: #00B140; }
+.tt-4.leaflet-tooltip { --tt-c: #8e44ad; }
+.tt-5.leaflet-tooltip { --tt-c: #919d9d; }
 
 /* arrows for teams that fell off-screen on the closest zoom */
 .edge-arrow {
@@ -548,15 +592,15 @@ footer {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 .edge-arrow-label {
-  background: rgba(28, 28, 30, 0.92);
-  color: #fff;
+  background: var(--panel);
+  color: var(--text);
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 6px;
-  border-left: 3px solid #888;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 2px solid #888; /* color set inline per team */
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 /* In-round screens */

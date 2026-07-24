@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Button from '@mui/material/Button';
+import Btn from './Btn';
 import MapView from './MapView';
 import { supabase } from '../supabase';
 
@@ -76,14 +76,13 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
           onPick={latlng => { if (!locked[sel] && !timeUp) setPicks(prev => ({ ...prev, [sel]: latlng })); }}
         />
       </div>
-      <Button
-        variant='contained'
-        size='large'
+      <Btn
+        className="btn-lg"
         disabled={!picks[sel] || locked[sel] || timeUp || saving}
         onClick={lockIn}
       >
-        {locked[sel] ? `Locked in ${sel}!` : saving ? 'Saving...' : `Lock in guess ${sel}`}
-      </Button>
+        {locked[sel] ? `Locked in ${sel}!` : saving ? 'Saving…' : `Lock in guess ${sel}`}
+      </Btn>
     </div>
   );
 }

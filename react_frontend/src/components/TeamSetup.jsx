@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Button from '@mui/material/Button';
+import Btn from './Btn';
 import { supabase } from '../supabase';
 
 // Placeholder set until Drew drops in custom SVGs
@@ -110,23 +110,13 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
       </div>
 
       <div className="role-buttons">
-        <Button
-          variant='contained'
-          size='large'
-          disabled={!nameReady || guessrTaken}
-          onClick={() => pickRole('guessr')}
-        >
+        <Btn className="btn-lg" disabled={!nameReady || guessrTaken} onClick={() => pickRole('guessr')}>
           Be the Guessr
-        </Button>
+        </Btn>
         {guessrTaken && <p className="team-hint">Your team already has a guessr</p>}
-        <Button
-          variant='contained'
-          size='large'
-          disabled={!nameReady}
-          onClick={() => pickRole('mappr')}
-        >
+        <Btn className="btn-lg" variant="blue" disabled={!nameReady} onClick={() => pickRole('mappr')}>
           Be a Mappr
-        </Button>
+        </Btn>
         {oops && <p className="join-error">{oops}</p>}
       </div>
     </div>

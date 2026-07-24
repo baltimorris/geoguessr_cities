@@ -46,33 +46,25 @@ function MapBus({ onMap, onMove }) {
   return null;
 }
 
-// where a ray from center leaves the padded viewport rectangle
-function edgePoint(cx, cy, dx, dy, w, h, margin) {
-  let scale = Infinity;
-  if (dx > 0) scale = Math.min(scale, (w - margin - cx) / dx);
-  if (dx < 0) scale = Math.min(scale, (margin - cx) / dx);
-  if (dy > 0) scale = Math.min(scale, (h - margin - cy) / dy);
-  if (dy < 0) scale = Math.min(scale, (margin - cy) / dy);
-  return { x: cx + dx * scale, y: cy + dy * scale };
-}
-
-// arrows at the map edge pointing to revealed teams that scrolled off-screen
+// arrows at the map edge for revealed teams that scrolled off-screen. the arrow
+// sits at the team's ACTUAL projected position clamped to the edge, so it lines up
+// with their true latitude (off left/right) or longitude (off top/bottom).
 function EdgeArrows({ map, points }) {
   if (!map) return null;
   const size = map.getSize();
-  const cx = size.x / 2, cy = size.y / 2;
+  const margin = 30;
   return points.map((p, i) => {
     const pt = map.latLngToContainerPoint([p.lat, p.lng]);
     const inView = pt.x >= 0 && pt.x <= size.x && pt.y >= 0 && pt.y <= size.y;
     if (inView) return null;
-    const dx = pt.x - cx, dy = pt.y - cy;
-    const edge = edgePoint(cx, cy, dx, dy, size.x, size.y, 34);
+    const ex = Math.max(margin, Math.min(size.x - margin, pt.x));
+    const ey = Math.max(margin, Math.min(size.y - margin, pt.y));
+    const angle = (Math.atan2(pt.y - ey, pt.x - ex) * 180) / Math.PI;
     const color = LINE_COLORS[i % LINE_COLORS.length];
-    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
     // keep the label on the interior side so it doesn't run off the map
-    const dir = dx > 0 ? 'row-reverse' : 'row';
+    const dir = ex > size.x / 2 ? 'row-reverse' : 'row';
     return (
-      <div key={p.team} className="edge-arrow" style={{ left: edge.x, top: edge.y, flexDirection: dir }}>
+      <div key={p.team} className="edge-arrow" style={{ left: ex, top: ey, flexDirection: dir }}>
         <span className="edge-arrow-head" style={{ transform: `rotate(${angle}deg)`, color }}>➤</span>
         <span className="edge-arrow-label" style={{ borderColor: color }}>
           {p.team} · {distanceLabel(p.dist)}
@@ -206,13 +198,13 @@ export default function RoundReveal({ game, locations, isDC }) {
                   radius={9}
                   pathOptions={{ color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, className: 'reveal-dot' }}
                 >
-                  <Tooltip permanent direction="right" offset={[10, 0]} className={`reveal-tt tt-${i}`}>
+                  <Tooltip permanent direction="auto" offset={[10, 0]} className={`reveal-tt tt-${i}`}>
                     <b>{rank}.</b> {g.team} · {distanceLabel(g.dist)}
                   </Tooltip>
                 </CircleMarker>
                 <Polyline
-                  positions={[[g.lat, g.lng], [loc.lat, loc.lng]]}
-                  pathOptions={{ color, weight: 3, dashArray: '8 6', className: 'reveal-line' }}
+                  positions={[[loc.lat, loc.lng], [g.lat, g.lng]]}
+                  pathOptions={{ color, weight: 3, className: 'reveal-line' }}
                 />
               </React.Fragment>
             );

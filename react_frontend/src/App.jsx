@@ -262,7 +262,14 @@ function App() {
     const { data } = await supabase.from('games')
       .update({ status: 'finished' }).eq('id', adminGame.id).select().single();
     if (data) setAdminGame(data);
-    localStorage.removeItem(ADMIN_GAME_KEY); // frees the runner to start a new one
+  };
+
+  // back to the setup panel for another game
+  const newGame = () => {
+    setAdminGame(null);
+    setAdminLocations([]);
+    setAdminError('');
+    localStorage.removeItem(ADMIN_GAME_KEY);
   };
 
   // one screen at a time, keyed so framer-motion can cross-fade between them
@@ -311,6 +318,7 @@ function App() {
               hideSettings = {hideSettings}
               adminGame = {adminGame}
               onCreateGame = {createGame}
+              onNewGame = {newGame}
               onStartGame = {startGame}
               onEndRound = {endRound}
               onRevealNext = {revealNext}

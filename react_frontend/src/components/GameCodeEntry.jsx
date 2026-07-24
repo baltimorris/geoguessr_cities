@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Button from '@mui/material/Button';
+import Btn from './Btn';
 import { supabase } from '../supabase';
 
 export default function GameCodeEntry({ activeCode, onJoin }) {
@@ -38,9 +38,9 @@ export default function GameCodeEntry({ activeCode, onJoin }) {
         }}
         onKeyDown={e => { if (e.key === 'Enter' && entry.length === 4) tryJoin(); }}
       />
-      <Button variant='contained' size='large' disabled={entry.length < 4 || checking} onClick={tryJoin}>
-        {checking ? 'Checking...' : 'Join'}
-      </Button>
+      <Btn className="btn-lg" disabled={entry.length < 4 || checking} onClick={tryJoin}>
+        {checking ? 'Checking…' : 'Join'}
+      </Btn>
       {error && <p className="join-error">No game found. Ask Jay or Drew for the right code!</p>}
     </div>
   );
