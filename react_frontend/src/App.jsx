@@ -142,14 +142,22 @@ function App() {
     return () => supabase.removeChannel(channel);
   }, [game?.id]);
 
-  // Grab every round's locations once the game is going
+  // Grab the round's locations once the game is going, but keep answer coordinates
+  // away from the guessr while they're guessing (their client would otherwise hold
+  // the exact answers). The guessr only needs the seq numbers for their chips.
+  // Mapprs get coordinates for the current round only, so they can't pre-read
+  // future rounds' answers either.
   useEffect(() => {
-    if (!supabase || !game?.id || !gameStarted) return;
-    supabase.from('locations')
-      .select('round,seq,lat,lng,heading').eq('game_id', game.id)
-      .order('round').order('seq')
-      .then(({ data }) => setLocations(data || []));
-  }, [game?.id, gameStarted]);
+    // wait for a role: before that they're on the team screen and need no locations,
+    // and role === null would otherwise slip past the guessr coordinate guard
+    if (!supabase || !game?.id || !gameStarted || !role) return;
+    const guessing = !gameOver && phase === 'guessing';
+    const wantCoords = !(role === 'guessr' && guessing);
+    const cols = wantCoords ? 'round,seq,lat,lng,heading' : 'round,seq';
+    let q = supabase.from('locations').select(cols).eq('game_id', game.id);
+    if (role === 'mappr' && guessing) q = q.eq('round', currentRound);
+    q.order('round').order('seq').then(({ data }) => setLocations(data || []));
+  }, [game?.id, gameStarted, role, phase, gameOver, currentRound]);
 
   // the runner needs to know whether 07_upload_round.R has run for this game
   useEffect(() => {
