@@ -203,6 +203,12 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
           <Btn className="btn-lg" onClick={onNewGame}>Set up a new game</Btn>
         </>
       )}
+
+      {adminGame.status !== 'finished' && (
+        <button className="remote-reset" onClick={onNewGame}>
+          New game (ends this one & resets)
+        </button>
+      )}
     </div>
   );
 

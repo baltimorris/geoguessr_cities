@@ -109,6 +109,14 @@ function App() {
     setLocalStarted(false);
   };
 
+  // Once a game is finished, let players see the final scores briefly, then boot
+  // them back to a clean code-entry screen so nobody lingers on a stale board.
+  useEffect(() => {
+    if (!role || game?.status !== 'finished') return;
+    const t = setTimeout(leaveGame, 30000);
+    return () => clearTimeout(t);
+  }, [role, game?.status]);
+
   // Until there's a backend, the joinable code is whatever admin set (or DEMO)
   const activeCode = gameSettings.code || 'DEMO';
 
@@ -274,8 +282,12 @@ function App() {
     if (data) setAdminGame(data);
   };
 
-  // back to the setup panel for another game
-  const newGame = () => {
+  // wipe the slate: finish the current game (which boots every player) and drop
+  // back to the setup panel for a fresh one
+  const newGame = async () => {
+    if (supabase && adminGame && adminGame.status !== 'finished') {
+      await supabase.from('games').update({ status: 'finished' }).eq('id', adminGame.id);
+    }
     setAdminGame(null);
     setAdminLocations([]);
     setAdminError('');
@@ -351,7 +363,7 @@ function App() {
             the whole time so a stalled animation engine can never hide the game. */}
         <motion.div
           key={screenKey}
-          className="screen"
+          className={`screen ${['mappr', 'lobby'].includes(screenKey) ? 'screen-full' : ''}`}
           initial={{ y: 12 }}
           animate={{ y: 0 }}
           transition={{ duration: 0.28, ease: 'easeOut' }}

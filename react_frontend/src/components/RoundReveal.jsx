@@ -130,7 +130,7 @@ export default function RoundReveal({ game, locations, isDC }) {
 
       setData({ byLoc, standings });
     })();
-  }, [game?.id, round]);
+  }, [game?.id, round, locations]);
 
   if (!data) return <p>Getting the reveal ready...</p>;
 

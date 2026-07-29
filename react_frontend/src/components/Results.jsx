@@ -32,7 +32,8 @@ export default function Results({ game, locations }) {
       }).sort((a, b) => b.score - a.score);
       setRows(scored);
     })();
-  }, [game?.id]);
+    // locations arrive async on a refresh; recompute when they land or scores read 0
+  }, [game?.id, locations]);
 
   if (!rows) return <p>Tallying scores...</p>;
 

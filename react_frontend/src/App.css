@@ -297,6 +297,21 @@ footer {
   overflow: hidden;
 }
 
+/* fullscreen lobby: bubbles fill everything under the heading + tag input */
+.screen-full .lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1.5rem;
+}
+
+.screen-full .lobby-area {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
 .bubble {
   display: flex;
   flex-direction: column;
@@ -326,12 +341,19 @@ footer {
 
 /* Street view for mapprs */
 .streetview-frame {
+  position: relative;
   width: 100%;
   max-width: 1200px;
   height: 65vh;
   border: 0;
   border-radius: 8px;
+  overflow: hidden;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.pano-canvas {
+  position: absolute;
+  inset: 0;
 }
 
 .streetview-fallback {
@@ -490,6 +512,85 @@ footer {
   height: 100%;
   max-width: none;
   border-radius: 0;
+}
+
+/* Fullscreen screens (mappr, lobby): fill everything below the header */
+main:has(.screen-full) {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.screen-full {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen-full .mappr-view,
+.screen-full .lobby {
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+
+.screen-full .mappr-view {
+  position: relative;
+}
+
+.screen-full .pano-stage {
+  flex: 1;
+  margin: 0;
+  height: auto;
+  min-height: 0;
+}
+
+/* location chips float over the bottom of the fullscreen pano */
+.screen-full .location-chips {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+/* +/- zoom control overlaid on the pano */
+.sv-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 14px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.sv-zoom button {
+  width: 3rem;
+  height: 3rem;
+  border: none;
+  background: rgba(20, 20, 20, 0.85);
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sv-zoom button:disabled {
+  color: #666;
+}
+
+.sv-zoom button:first-child {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 /* Round with nothing uploaded yet */

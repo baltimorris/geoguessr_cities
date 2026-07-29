@@ -184,6 +184,17 @@
   align-items: center;
 }
 
+.remote-reset {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.5rem 0 0;
+  margin-top: 0.5rem;
+}
+
 /* Admin section inside the settings pane */
 .admin-section {
   display: flex;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 // Load the Maps JS API once and share the promise
 let mapsPromise;
@@ -16,18 +16,29 @@ export function loadMaps(apiKey) {
   return mapsPromise;
 }
 
-const FIXED_ZOOM = 1;
+// three discrete zoom steps: buttons move between them, pinch/scroll can't
+const ZOOM_STEPS = [0, 1, 2];
+const START_STEP = 1;
 
 export default function StreetView({ isDC, location }) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const panoRef = useRef(null);
   const panoObj = useRef(null);
   const observer = useRef(null);
+  const stepRef = useRef(START_STEP);
+  const [step, setStep] = useState(START_STEP);
 
   // Fall back to a fun spot if the game has no locations loaded
   const lat = location?.lat ?? (isDC ? 38.9097 : 40.7580);
   const lng = location?.lng ?? (isDC ? -77.0434 : -73.9855);
   const heading = location?.heading ?? 210;
+
+  const applyStep = (next) => {
+    const clamped = Math.max(0, Math.min(ZOOM_STEPS.length - 1, next));
+    stepRef.current = clamped;
+    setStep(clamped);
+    panoObj.current?.setZoom(ZOOM_STEPS[clamped]);
+  };
 
   useEffect(() => {
     if (!apiKey) return;
@@ -35,7 +46,6 @@ export default function StreetView({ isDC, location }) {
     loadMaps(apiKey).then(google => {
       if (cancelled || !panoRef.current) return;
       if (panoObj.current) {
-        // round advanced, move the existing pano
         panoObj.current.setPosition({ lat, lng });
         panoObj.current.setPov({ heading, pitch: 0 });
         return;
@@ -43,13 +53,13 @@ export default function StreetView({ isDC, location }) {
       const pano = new google.maps.StreetViewPanorama(panoRef.current, {
         position: { lat, lng },
         pov: { heading, pitch: 0 },
-        zoom: FIXED_ZOOM,
+        zoom: ZOOM_STEPS[stepRef.current],
         // pan around all you want, but nothing that gives the location away
         addressControl: false,
         linksControl: false,
         showRoadLabels: false,
         clickToGo: false,
-        // and no zooming in on street signs
+        // zoom only via our own buttons, not pinch/scroll/double-click
         zoomControl: false,
         scrollwheel: false,
         disableDoubleClickZoom: true,
@@ -58,14 +68,14 @@ export default function StreetView({ isDC, location }) {
         motionTracking: false,
         motionTrackingControl: false,
       });
-      // pinch zoom has no off switch, so snap it back instead
+      // snap any stray zoom (pinch) back to the current step
       pano.addListener('zoom_changed', () => {
-        if (pano.getZoom() !== FIXED_ZOOM) pano.setZoom(FIXED_ZOOM);
+        const want = ZOOM_STEPS[stepRef.current];
+        if (pano.getZoom() !== want) pano.setZoom(want);
       });
       panoObj.current = pano;
 
-      // in the carousel the slide gets its width after the pano is built,
-      // and a pano that missed its size renders solid black until you poke it
+      // a pano that gets its size after being built can render solid black
       const kick = () => google.maps.event.trigger(pano, 'resize');
       setTimeout(kick, 60);
       setTimeout(kick, 400);
@@ -91,5 +101,13 @@ export default function StreetView({ isDC, location }) {
     );
   }
 
-  return <div className="streetview-frame" ref={panoRef} />;
+  return (
+    <div className="streetview-frame">
+      <div className="pano-canvas" ref={panoRef} />
+      <div className="sv-zoom">
+        <button aria-label="Zoom in" disabled={step >= ZOOM_STEPS.length - 1} onClick={() => applyStep(step + 1)}>+</button>
+        <button aria-label="Zoom out" disabled={step <= 0} onClick={() => applyStep(step - 1)}>&minus;</button>
+      </div>
+    </div>
+  );
 }
