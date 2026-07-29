@@ -589,8 +589,30 @@ main:has(.screen-full) {
   color: #666;
 }
 
-.sv-zoom button:first-child {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+.sv-zoom button + .sv-zoom-dots,
+.sv-zoom .sv-zoom-dots + button {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* dots between the +/- buttons show which of the 3 zoom steps is active */
+.sv-zoom-dots {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 0;
+  background: rgba(20, 20, 20, 0.85);
+}
+
+.sv-zoom-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.sv-zoom-dot.active {
+  background: #fff;
 }
 
 /* Round with nothing uploaded yet */
@@ -779,21 +801,6 @@ main:has(.screen-full) {
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: normal;
-}
-
-/* Team badge shown once you're in */
-.team-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-weight: bold;
-  font-size: 1.6rem;
-  margin-bottom: 1rem;
-}
-
-.team-chip .team-emoji {
-  font-size: 2rem;
-  line-height: 1;
 }
 
 /* escape hatch if someone else's session got restored on a shared phone */

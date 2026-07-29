@@ -16,9 +16,10 @@ export function loadMaps(apiKey) {
   return mapsPromise;
 }
 
-// three discrete zoom steps: buttons move between them, pinch/scroll can't
+// three discrete zoom steps: buttons move between them, pinch/scroll can't.
+// index 0 is the default, furthest-out view.
 const ZOOM_STEPS = [0, 1, 2];
-const START_STEP = 1;
+const START_STEP = 0;
 
 export default function StreetView({ isDC, location }) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -106,6 +107,12 @@ export default function StreetView({ isDC, location }) {
       <div className="pano-canvas" ref={panoRef} />
       <div className="sv-zoom">
         <button aria-label="Zoom in" disabled={step >= ZOOM_STEPS.length - 1} onClick={() => applyStep(step + 1)}>+</button>
+        <div className="sv-zoom-dots" aria-label={`Zoom level ${step + 1} of ${ZOOM_STEPS.length}`}>
+          {/* top dot = most zoomed in (next to +), bottom dot = furthest out (next to -) */}
+          {ZOOM_STEPS.map((_, i) => ZOOM_STEPS.length - 1 - i).map(i => (
+            <span key={i} className={`sv-zoom-dot ${i === step ? 'active' : ''}`} />
+          ))}
+        </div>
         <button aria-label="Zoom out" disabled={step <= 0} onClick={() => applyStep(step - 1)}>&minus;</button>
       </div>
     </div>

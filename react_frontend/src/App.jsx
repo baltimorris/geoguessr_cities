@@ -350,14 +350,10 @@ function App() {
               generating = {generating}
               adminError = {adminError}
               adminRoundOver = {adminRoundOver}
-              adminLocationCount = {adminLocations.length} />
-      {role && (
-        <div className="team-chip">
-          {team.emoji && <span className="team-emoji">{team.emoji}</span>}
-          <span>Team {team.name}</span>
-          <button className="leave-link" onClick={leaveGame}>not you?</button>
-        </div>
-      )}
+              adminLocationCount = {adminLocations.length}
+              team = {team}
+              role = {role}
+              onLeaveGame = {leaveGame} />
       <main>
         {/* keyed so it re-mounts and slides in on each screen change. opacity stays 1
             the whole time so a stalled animation engine can never hide the game. */}

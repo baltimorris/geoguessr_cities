@@ -44,7 +44,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0 }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, team, role, onLeaveGame }) {
   const isNYC = !isDC;
   // a reload shouldn't hand the runner's phone back to a player
   const wasAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('lg_admin') === '1';
@@ -232,7 +232,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
       </div>
 
       <motion.div
-        className="header-text-container"
+        className={`header-text-container ${role ? 'has-team' : ''}`}
         animate={{ opacity: settingsOpen ? 0 : 1, y: settingsOpen ? 20 : 0 }}
         transition={{ duration: 0.4 }}
       >
@@ -254,6 +254,13 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
         </AnimatePresence>
         <div className="dc-float">{isNYC ? 'NYC' : 'DC'}</div>
         <div className="header-text">LocalGuessr</div>
+        {role && team && (
+          <div className="header-team-line">
+            {team.emoji && <span className="team-emoji">{team.emoji}</span>}
+            <span>Team {team.name}</span>
+            <button className="leave-link" onClick={onLeaveGame}>not you?</button>
+          </div>
+        )}
       </motion.div>
 
       {/* Gear Button, goes away once you've committed to a team */}

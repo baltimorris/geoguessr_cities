@@ -53,6 +53,38 @@
   bottom: -4rem; /* Fixed distance from the bottom of the header container */
   left: 0; /* Keep it aligned with the left edge of the header container */
   flex-shrink: 0; /* Prevent text from shrinking */
+  transition: font-size 0.3s ease, bottom 0.3s ease;
+}
+
+/* once a team's locked in, the title steps back to make room underneath it */
+.header-text-container.has-team .header-text {
+  font-size: 1.3rem;
+  bottom: -2.6rem;
+}
+
+/* team name + emoji, sits under the (now smaller) title once a role is picked */
+.header-team-line {
+  position: absolute;
+  left: 20px;
+  bottom: -4.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.header-team-line .team-emoji {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.header-team-line .leave-link {
+  color: #bbb;
+  font-weight: 400;
+  font-size: 0.8rem;
 }
 
 /* Vertical bars inside the header */
