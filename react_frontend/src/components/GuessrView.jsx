@@ -15,8 +15,31 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
   const [locked, setLocked] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // fresh round, fresh everything
-  useEffect(() => { setSel(1); setPicks({}); setLocked({}); }, [round]);
+  // fresh round, fresh everything - then pull back any guesses already saved
+  // for it, so a refresh mid-round (phone locks, tab reloads) doesn't make it
+  // look like locked-in guesses vanished and need re-doing
+  useEffect(() => {
+    setSel(1);
+    setPicks({});
+    setLocked({});
+    if (!supabase || !team?.id) return;
+    let cancelled = false;
+    supabase.from('guesses').select('location,lat,lng,created_at')
+      .eq('team_id', team.id).eq('round', round)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (cancelled || !data?.length) return;
+        const restoredPicks = {}, restoredLocked = {};
+        for (const g of data) {
+          if (restoredPicks[g.location]) continue; // newest first, so first seen wins
+          restoredPicks[g.location] = { lat: g.lat, lng: g.lng };
+          restoredLocked[g.location] = true;
+        }
+        setPicks(restoredPicks);
+        setLocked(restoredLocked);
+      });
+    return () => { cancelled = true; };
+  }, [round, team?.id]);
 
   const isDC = (game?.city || 'DC') === 'DC';
   const totalMs = (game?.settings?.roundMinutes ?? 15) * 60000;

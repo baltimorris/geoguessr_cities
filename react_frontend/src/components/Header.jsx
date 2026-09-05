@@ -7,7 +7,9 @@ import './Header.css';
 
 const barClasses = ['RD', 'OR', 'BL', 'YL', 'GR', 'SV'];
 
-const ADMIN_PASSWORD = 'pylon'; // temp until there's a real backend
+// was a hardcoded literal here, which meant it sat in plain text in the repo's
+// history for anyone to grep. Set VITE_ADMIN_PASSWORD in .env.local instead.
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'pylon';
 
 // little ? that reveals a hint on hover or tap (tap matters on phones)
 function InfoBadge({ text }) {
@@ -192,7 +194,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
               ? <Btn className="btn-lg" onClick={onEndRound}>End round</Btn>
               : <Btn className="btn-lg" onClick={onRevealNext}>Reveal next ▸</Btn>}
             <Btn variant="outline" disabled={curRound >= rounds} onClick={onNextRound}>Next round</Btn>
-            <Btn variant="danger" onClick={onFinishGame}>Finish game</Btn>
+            <Btn variant="danger" onClick={() => { if (window.confirm('Finish the game for everyone right now?')) onFinishGame(); }}>Finish game</Btn>
           </div>
         </>
       )}
@@ -205,7 +207,9 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
       )}
 
       {adminGame.status !== 'finished' && (
-        <button className="remote-reset" onClick={onNewGame}>
+        <button className="remote-reset" onClick={() => {
+          if (window.confirm('End the current game and reset for a new one? This boots everyone.')) onNewGame();
+        }}>
           New game (ends this one & resets)
         </button>
       )}
@@ -259,7 +263,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
         {role && team && (
           <div className="header-team-line">
             {team.emoji && <span className="team-emoji">{team.emoji}</span>}
-            <span>Team {team.name}</span>
+            <span className="team-name-text">Team {team.name}</span>
             <button className="leave-link" onClick={onLeaveGame}>not you?</button>
           </div>
         )}

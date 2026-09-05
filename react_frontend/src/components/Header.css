@@ -74,21 +74,30 @@
 /* team name + emoji, sits under the (now smaller) title once a role is picked */
 .header-team-line {
   margin-left: 20px; /* lines up with .header-text's own offset */
+  max-width: calc(100vw - 90px); /* leaves room for the gear button so a long name can't run off screen */
   display: flex;
   align-items: center;
   gap: 0.4rem;
   color: white;
   font-size: 1.05rem;
   font-weight: 700;
-  white-space: nowrap;
 }
 
 .header-team-line .team-emoji {
   font-size: 1.2rem;
   line-height: 1;
+  flex-shrink: 0;
+}
+
+.header-team-line .team-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0; /* lets a long team name actually shrink+ellipsize instead of pushing "not you?" offscreen */
 }
 
 .header-team-line .leave-link {
+  flex-shrink: 0;
   color: #bbb;
   font-weight: 400;
   font-size: 0.8rem;

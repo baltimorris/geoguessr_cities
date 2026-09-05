@@ -100,6 +100,12 @@ function App() {
   }, []);
 
   const leaveGame = () => {
+    // free up the guessr seat so a teammate can pick it up - otherwise a team
+    // whose guessr's phone dies or who taps "not you?" is stuck guessr-less
+    // for the rest of the game, since nothing else ever clears this flag.
+    if (supabase && role === 'guessr' && team?.id) {
+      supabase.from('teams').update({ guessr_claimed: false }).eq('id', team.id).then(() => {});
+    }
     localStorage.removeItem(SESSION_KEY);
     setGame(null);
     setTeam(null);
@@ -208,12 +214,23 @@ function App() {
     localStorage.setItem(ADMIN_GAME_KEY, data.id);
   };
 
+  // Every remote-control tap below used to silently do nothing on a flaky bar
+  // wifi connection (data was read but error never checked) - this surfaces
+  // a message instead so the runner isn't left guessing whether a tap landed.
+  const runAdminAction = async (updates, failMsg) => {
+    const { data, error } = await supabase.from('games')
+      .update(updates).eq('id', adminGame.id).select().single();
+    if (error) { setAdminError(failMsg); return; }
+    setAdminError('');
+    setAdminGame(data);
+  };
+
   const startGame = async () => {
     if (supabase && adminGame) {
-      const { data } = await supabase.from('games')
-        .update({ status: 'active', current_round: 1, round_started_at: new Date().toISOString() })
-        .eq('id', adminGame.id).select().single();
-      if (data) setAdminGame(data);
+      await runAdminAction(
+        { status: 'active', current_round: 1, round_started_at: new Date().toISOString() },
+        "Couldn't start the game, try again"
+      );
     }
     setLocalStarted(true); // no-supabase mode
   };
@@ -225,11 +242,13 @@ function App() {
     setGenerating(true);
     try {
       // the game's own settings win, the form may have been reset by a reload
+      const rounds = adminGame.settings?.rounds ?? gameSettings.rounds ?? 3;
+      const perRound = adminGame.settings?.locationsPerRound ?? gameSettings.locationsPerRound ?? 5;
       const spots = await generateLocations({
         apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
         city: adminGame.city,
-        rounds: adminGame.settings?.rounds ?? gameSettings.rounds ?? 3,
-        perRound: adminGame.settings?.locationsPerRound ?? gameSettings.locationsPerRound ?? 5,
+        rounds,
+        perRound,
         settings: adminGame.settings ?? gameSettings,
       });
       if (!spots.length) throw new Error('no street view spots came back');
@@ -237,6 +256,12 @@ function App() {
         .insert(spots.map(({ area, ...s }) => ({ ...s, game_id: adminGame.id })));
       if (error) throw error;
       setAdminLocations(spots);
+      // a bucket with sparse Street View coverage can quietly come up short
+      // instead of failing outright, so say so rather than leave a round thin
+      const expected = rounds * perRound;
+      setAdminError(spots.length < expected
+        ? `Only found ${spots.length} of ${expected} spots — some areas may have thin Street View coverage. Try again or adjust the weights.`
+        : '');
     } catch (e) {
       setAdminError(e.message || "Couldn't generate locations");
     }
@@ -248,45 +273,46 @@ function App() {
   const endRound = async () => {
     if (!supabase || !adminGame) return;
     const mins = adminGame.settings?.roundMinutes ?? 15;
-    const { data } = await supabase.from('games')
-      .update({ round_started_at: new Date(Date.now() - mins * 60000).toISOString(), reveal_step: 0 })
-      .eq('id', adminGame.id).select().single();
-    if (data) setAdminGame(data);
+    await runAdminAction(
+      { round_started_at: new Date(Date.now() - mins * 60000).toISOString(), reveal_step: 0 },
+      "Couldn't end the round, try again"
+    );
   };
 
   // Admin drives the reveal by hand now, one bump per team/location
   const revealNext = async () => {
     if (!supabase || !adminGame) return;
-    const { data } = await supabase.from('games')
-      .update({ reveal_step: (adminGame.reveal_step || 0) + 1 })
-      .eq('id', adminGame.id).select().single();
-    if (data) setAdminGame(data);
+    await runAdminAction(
+      { reveal_step: (adminGame.reveal_step || 0) + 1 },
+      "Couldn't advance the reveal, try again"
+    );
   };
 
   const nextRound = async () => {
     if (!supabase || !adminGame) return;
-    const { data } = await supabase.from('games')
-      .update({
+    await runAdminAction(
+      {
         current_round: (adminGame.current_round || 1) + 1,
         round_started_at: new Date().toISOString(),
         reveal_step: 0,
-      })
-      .eq('id', adminGame.id).select().single();
-    if (data) setAdminGame(data);
+      },
+      "Couldn't start the next round, try again"
+    );
   };
 
   const finishGame = async () => {
     if (!supabase || !adminGame) return;
-    const { data } = await supabase.from('games')
-      .update({ status: 'finished' }).eq('id', adminGame.id).select().single();
-    if (data) setAdminGame(data);
+    await runAdminAction({ status: 'finished' }, "Couldn't finish the game, try again");
   };
 
   // wipe the slate: finish the current game (which boots every player) and drop
   // back to the setup panel for a fresh one
   const newGame = async () => {
     if (supabase && adminGame && adminGame.status !== 'finished') {
-      await supabase.from('games').update({ status: 'finished' }).eq('id', adminGame.id);
+      const { error } = await supabase.from('games').update({ status: 'finished' }).eq('id', adminGame.id);
+      // if this failed, the game's still live server-side - don't drop the
+      // panel back to setup and orphan it with nobody driving anymore
+      if (error) { setAdminError("Couldn't reset, try again"); return; }
     }
     setAdminGame(null);
     setAdminLocations([]);
