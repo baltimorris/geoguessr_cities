@@ -236,24 +236,26 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
         animate={{ opacity: settingsOpen ? 0 : 1, y: settingsOpen ? 20 : 0 }}
         transition={{ duration: 0.4 }}
       >
-        <AnimatePresence>
-          {isNYC && (
-            <motion.div
-              className="nyc-arrow"
-              initial={{ opacity: 0, x: -20, y: -20 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              exit={{ opacity: 0, x: -20, y: -20 }}
-              transition={{ delay: 0.6, duration: 0.4, ease: 'easeOut' }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <path d="M2.5 2.5L20 20" />
-                <polyline points="21.5,10 21.5,21.5 10,21.5" />
-              </svg>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div className="dc-float">{isNYC ? 'NYC' : 'DC'}</div>
-        <div className="header-text">LocalGuessr</div>
+        <div className="header-text">
+          <AnimatePresence>
+            {isNYC && (
+              <motion.span
+                className="nyc-arrow"
+                initial={{ opacity: 0, x: -20, y: -20 }}
+                animate={{ opacity: 1, x: 0, y: 0 }}
+                exit={{ opacity: 0, x: -20, y: -20 }}
+                transition={{ delay: 0.6, duration: 0.4, ease: 'easeOut' }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <path d="M2.5 2.5L20 20" />
+                  <polyline points="21.5,10 21.5,21.5 10,21.5" />
+                </svg>
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <span className="header-text-label">LocalGuessr</span>
+          <span className="dc-float">{isNYC ? 'NYC' : 'DC'}</span>
+        </div>
         {role && team && (
           <div className="header-team-line">
             {team.emoji && <span className="team-emoji">{team.emoji}</span>}

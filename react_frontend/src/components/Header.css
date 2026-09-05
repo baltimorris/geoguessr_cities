@@ -23,19 +23,25 @@
   height: 100vh;
 }
 
-/* Container for header text and DC */
+/* Container for header text and DC. Stacks the title over the team line
+   and just centers vertically in whatever height the header ends up with,
+   instead of pinning both lines to the header's bottom edge with magic
+   negative offsets (that math broke the moment a second line got added). */
 .header-text-container {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.3rem;
   position: relative;
+  height: 100%;
 }
 
-/* DC text that floats */
+/* DC/NYC badge, sits in the corner of the wordmark and scales with it */
 .dc-float {
-  position: absolute;
-  right: -15rem; /* Adjust this value to move the DC text closer or further from the header text */
-  top: 1rem;  /* Adjust this to align the DC text vertically */
-  font-size: 1rem; /* Adjust font size */
+  align-self: flex-start;
+  font-size: 0.5em; /* relative to .header-text, so it shrinks along with the title */
+  white-space: nowrap;
   color: white;
   opacity: 0;
   animation: slideFadeIn 0.5s ease-in-out forwards;
@@ -49,24 +55,25 @@
   font-size: 2rem; /* Adjust font size */
   font-weight: bold;
   margin-left: 20px; /* Fixed distance from the bars */
-  position: absolute; /* Use absolute positioning */
-  bottom: -4rem; /* Fixed distance from the bottom of the header container */
-  left: 0; /* Keep it aligned with the left edge of the header container */
+  display: flex;
+  align-items: flex-end;
+  gap: 0.15em;
   flex-shrink: 0; /* Prevent text from shrinking */
-  transition: font-size 0.3s ease, bottom 0.3s ease;
+  transition: font-size 0.3s ease;
+}
+
+.header-text-label {
+  white-space: nowrap;
 }
 
 /* once a team's locked in, the title steps back to make room underneath it */
 .header-text-container.has-team .header-text {
   font-size: 1.3rem;
-  bottom: -2.6rem;
 }
 
 /* team name + emoji, sits under the (now smaller) title once a role is picked */
 .header-team-line {
-  position: absolute;
-  left: 20px;
-  bottom: -4.4rem;
+  margin-left: 20px; /* lines up with .header-text's own offset */
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -98,15 +105,13 @@
 
 /* NYC subway-sign arrow, same size as the header text and flush against it */
 .nyc-arrow {
-  position: absolute;
-  bottom: -3.1rem; /* lines the arrow bottom up with the text baseline */
-  right: -20px;
   display: flex;
+  align-items: flex-end;
   color: white;
 }
 
 .nyc-arrow svg {
-  height: 2rem;
+  height: 1em; /* relative to .header-text, so it shrinks along with the title */
   width: auto;
 }
 
