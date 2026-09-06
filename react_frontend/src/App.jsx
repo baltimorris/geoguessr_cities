@@ -11,6 +11,7 @@ import Results from './components/Results';
 import { motion } from 'framer-motion';
 import { supabase } from './supabase';
 import { generateLocations } from './generateLocations';
+import { mergeTeams } from './scoring';
 
 // Defaults lifted from 00_parameters.R
 const defaultGameSettings = {
@@ -44,6 +45,7 @@ function App() {
   const [adminGame, setAdminGame] = useState(null); // the games row created from the admin panel
   const [adminLocations, setAdminLocations] = useState([]); // so the runner knows if a round is loaded
   const [adminError, setAdminError] = useState('');
+  const [revealTotal, setRevealTotal] = useState(null); // how many reveal steps this round has, so the remote knows when to stop offering "Reveal next"
   const [generating, setGenerating] = useState(false);
   const [locations, setLocations] = useState([]);
   const [teamName, setTeamName] = useState('');
@@ -189,6 +191,31 @@ function App() {
     : null;
   const adminRoundOver = adminGame?.status === 'active' && adminDeadline !== null && now >= adminDeadline;
 
+  // How many reveal frames the current round actually has (one per location,
+  // plus one more per team that guessed there) - the remote uses this to know
+  // when "Reveal next" has nothing left to reveal, same tally RoundReveal
+  // does for players, so the runner's control never outpaces or lags theirs.
+  useEffect(() => {
+    if (!supabase || !adminGame?.id || adminGame.status !== 'active') { setRevealTotal(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data: teams } = await supabase.from('teams').select('id,name,size').eq('game_id', adminGame.id);
+      const ids = (teams || []).map(t => t.id);
+      const { data: guesses } = ids.length
+        ? await supabase.from('guesses').select('team_id,location').eq('round', adminGame.current_round).in('team_id', ids)
+        : { data: [] };
+      if (cancelled) return;
+      const merged = mergeTeams(teams || []);
+      const locsThisRound = adminLocations.filter(l => l.round === adminGame.current_round);
+      const total = locsThisRound.reduce((sum, loc) => {
+        const n = merged.filter(t => t.ids.some(id => (guesses || []).some(g => g.team_id === id && g.location === loc.seq))).length;
+        return sum + Math.max(1, n);
+      }, 0);
+      setRevealTotal(total);
+    })();
+    return () => { cancelled = true; };
+  }, [adminGame?.id, adminGame?.status, adminGame?.current_round, adminRoundOver, adminLocations]);
+
   const joinGame = (g) => {
     setGame(g);
     if (g.city) setCity(g.city === 'DC');
@@ -288,6 +315,15 @@ function App() {
     );
   };
 
+  // undoes an accidental (or "let me show that again") tap of Reveal next
+  const revealBack = async () => {
+    if (!supabase || !adminGame) return;
+    await runAdminAction(
+      { reveal_step: Math.max(0, (adminGame.reveal_step || 0) - 1) },
+      "Couldn't go back, try again"
+    );
+  };
+
   const nextRound = async () => {
     if (!supabase || !adminGame) return;
     await runAdminAction(
@@ -370,6 +406,7 @@ function App() {
               onStartGame = {startGame}
               onEndRound = {endRound}
               onRevealNext = {revealNext}
+              onRevealBack = {revealBack}
               onNextRound = {nextRound}
               onFinishGame = {finishGame}
               onSeedLocations = {seedLocations}
@@ -377,6 +414,7 @@ function App() {
               adminError = {adminError}
               adminRoundOver = {adminRoundOver}
               adminLocationCount = {adminLocations.length}
+              revealTotal = {revealTotal}
               team = {team}
               role = {role}
               onLeaveGame = {leaveGame} />

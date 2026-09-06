@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Switch from '@mui/material/Switch';
 import { FaCog } from 'react-icons/fa';
 import Btn from './Btn';
+import AdminRemote from './AdminRemote';
 import './Header.css';
 
 const barClasses = ['RD', 'OR', 'BL', 'YL', 'GR', 'SV'];
@@ -46,7 +47,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, team, role, onLeaveGame }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onRevealBack, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, revealTotal, team, role, onLeaveGame }) {
   const isNYC = !isDC;
   // a reload shouldn't hand the runner's phone back to a player
   const wasAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('lg_admin') === '1';
@@ -56,8 +57,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
   const [pwError, setPwError] = useState(false);
 
   const cityKey = isDC ? 'dc' : 'nyc';
-  const rounds = adminGame?.settings?.rounds ?? gameSettings.rounds ?? 3;
-  const curRound = adminGame?.current_round || 1;
+  const showRemote = adminUnlocked && !!adminGame;
 
   const tryUnlock = () => {
     if (pwEntry === ADMIN_PASSWORD) {
@@ -160,66 +160,12 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
     </>
   );
 
-  const remotePanel = adminGame && (
-    <div className="remote">
-      <div className="remote-code">{adminGame.code}</div>
-      {adminError && <p className="pw-error">{adminError}</p>}
-
-      {adminGame.status === 'lobby' && (
-        <>
-          {adminLocationCount === 0 ? (
-            <>
-              <p className="admin-warning">
-                No locations yet &mdash; run 07_upload_round.R with code {adminGame.code}, or grab random ones
-              </p>
-              <Btn variant="outline" disabled={generating} onClick={onSeedLocations}>
-                {generating ? 'Finding street views…' : 'Generate locations'}
-              </Btn>
-            </>
-          ) : (
-            <p className="admin-game-live">{adminLocationCount} locations loaded &mdash; tell people the code</p>
-          )}
-          <Btn className="btn-lg" disabled={adminLocationCount === 0} onClick={onStartGame}>Start game</Btn>
-        </>
-      )}
-
-      {adminGame.status === 'active' && (
-        <>
-          <p className="remote-status">
-            Round {curRound} of {rounds}
-            {adminRoundOver && <> &middot; reveal {adminGame.reveal_step || 0}</>}
-          </p>
-          <div className="remote-buttons">
-            {!adminRoundOver
-              ? <Btn className="btn-lg" onClick={onEndRound}>End round</Btn>
-              : <Btn className="btn-lg" onClick={onRevealNext}>Reveal next ▸</Btn>}
-            <Btn variant="outline" disabled={curRound >= rounds} onClick={onNextRound}>Next round</Btn>
-            <Btn variant="danger" onClick={() => { if (window.confirm('Finish the game for everyone right now?')) onFinishGame(); }}>Finish game</Btn>
-          </div>
-        </>
-      )}
-
-      {adminGame.status === 'finished' && (
-        <>
-          <p className="admin-game-live">Game over, scores are up</p>
-          <Btn className="btn-lg" onClick={onNewGame}>Set up a new game</Btn>
-        </>
-      )}
-
-      {adminGame.status !== 'finished' && (
-        <button className="remote-reset" onClick={() => {
-          if (window.confirm('End the current game and reset for a new one? This boots everyone.')) onNewGame();
-        }}>
-          New game (ends this one & resets)
-        </button>
-      )}
-    </div>
-  );
-
   return (
     <motion.header
       className="header"
-      animate={{ height: settingsOpen ? '100%' : '15vh' }}
+      // the remote control renders as its own centered overlay, so only the
+      // plain settings pane needs the header itself to grow and make room
+      animate={{ height: settingsOpen && !showRemote ? '100%' : '15vh' }}
       transition={{ duration: 0.4 }}
       style={{ overflow: 'hidden', position: 'relative' }}
     >
@@ -276,9 +222,10 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
         </button>
       )}
 
-      {/* Settings Panel */}
+      {/* Settings panel - password gate and pre-game setup only. Once a game
+          exists, the gear opens the centered remote control below instead. */}
       <AnimatePresence>
-        {settingsOpen && (
+        {settingsOpen && !showRemote && (
           <motion.div
             className="settings-pane"
             initial={{ opacity: 0, y: -20 }}
@@ -286,7 +233,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
             exit={{ opacity: 0, y: -20 }}
             transition={{ delay: 0.4, duration: 0.4 }}
           >
-            <h2>{adminGame ? 'Game control' : 'Settings'}</h2>
+            <h2>Settings</h2>
             {!adminUnlocked ? (
               <div className="admin-section">
                 {/* city toggle stays available to players glancing at settings */}
@@ -308,11 +255,33 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                 </label>
               </div>
             ) : (
-              <div className="admin-section">
-                {adminGame ? remotePanel : setupPanel}
-              </div>
+              <div className="admin-section">{setupPanel}</div>
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Remote control - a centered "what happens next" panel once a game exists,
+          instead of a wall of buttons you could tap in any order */}
+      <AnimatePresence>
+        {settingsOpen && showRemote && (
+          <AdminRemote
+            game={adminGame}
+            locationCount={adminLocationCount}
+            generating={generating}
+            error={adminError}
+            roundOver={adminRoundOver}
+            revealTotal={revealTotal}
+            onClose={() => setSettingsOpen(false)}
+            onSeedLocations={onSeedLocations}
+            onStartGame={onStartGame}
+            onEndRound={onEndRound}
+            onRevealNext={onRevealNext}
+            onRevealBack={onRevealBack}
+            onNextRound={onNextRound}
+            onFinishGame={onFinishGame}
+            onNewGame={onNewGame}
+          />
         )}
       </AnimatePresence>
     </motion.header>

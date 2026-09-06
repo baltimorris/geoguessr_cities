@@ -200,47 +200,6 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
 }
 
-/* Remote control the runner sees once a game exists */
-.remote {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1rem;
-  width: 100%;
-}
-
-.remote-code {
-  font-size: 2.6rem;
-  font-weight: 800;
-  letter-spacing: 0.25em;
-  line-height: 1;
-  color: #fff;
-}
-
-.remote-status {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #ddd;
-}
-
-.remote-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.remote-reset {
-  background: none;
-  border: none;
-  color: #999;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0.5rem 0 0;
-  margin-top: 0.5rem;
-}
-
 /* Admin section inside the settings pane */
 .admin-section {
   display: flex;
@@ -286,24 +245,6 @@
   font-size: 0.9rem;
 }
 
-.admin-game-live {
-  font-size: 1rem;
-  color: #00B140;
-}
-
-.admin-round-buttons {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-}
-
-.admin-warning {
-  font-size: 1rem;
-  color: #FFD100;
-  max-width: 22rem;
-}
-
 /* Full page take over when you unlock admin */
 .admin-takeover {
   position: fixed;
@@ -328,11 +269,6 @@
   max-width: 26rem;
   font-size: 1.1rem;
   line-height: 1.5;
-}
-
-.admin-round-buttons .MuiButton-outlined {
-  color: white;
-  border-color: #666;
 }
 
 /* Phones: one weight per row so nothing runs off the right edge */

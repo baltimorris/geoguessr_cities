@@ -1,0 +1,78 @@
+/* Centered "remote control" for a game that already exists - separate from
+   the sliding settings-pane used for pre-game setup, and from the header's
+   own animated height, since this floats over the whole viewport instead. */
+
+.admin-remote-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.admin-remote {
+  width: 100%;
+  max-width: 22rem;
+  background: #282828;
+  color: white;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  padding: 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.admin-remote-code {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  line-height: 1;
+}
+
+.admin-remote-status {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ddd;
+  margin: 0.25rem 0 1.25rem;
+}
+
+.admin-remote-primary {
+  width: 100%;
+}
+
+.admin-remote-back {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.9rem 0 0;
+}
+
+.admin-remote-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #444;
+  width: 100%;
+}
+
+.admin-remote-link {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.15rem 0;
+}
