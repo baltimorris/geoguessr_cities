@@ -88,6 +88,12 @@ export default function RoundReveal({ game, locations, isDC }) {
 
   useEffect(() => {
     if (!supabase || !game?.id) return;
+    // locations arrive as a separate async fetch up in App.jsx - on a refresh
+    // mid-reveal this effect can run before that's landed, computing everyone
+    // at 0 points off an empty round. Wait for a real fetch instead of
+    // flashing that, then let this same effect's `locations` dependency
+    // rerun it once locations actually show up.
+    if (!locations.length) return;
     (async () => {
       const { data: teams } = await supabase.from('teams')
         .select('id,name,size').eq('game_id', game.id);

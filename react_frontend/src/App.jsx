@@ -159,6 +159,30 @@ function App() {
     return () => supabase.removeChannel(channel);
   }, [game?.id]);
 
+  // A locked/backgrounded phone can drop the realtime socket without any
+  // visible sign of it - coming back to find the round already moved on (or
+  // the game already finished) and just sitting there stuck is exactly the
+  // kind of thing that happens on a real phone at a bar. Pull a fresh copy
+  // of whatever this device cares about whenever the tab comes back to the
+  // foreground, as a belt-and-suspenders fix regardless of why the socket
+  // dropped - covers both a player's game and the runner's own.
+  useEffect(() => {
+    if (!supabase) return;
+    const resync = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (game?.id) {
+        supabase.from('games').select().eq('id', game.id).maybeSingle()
+          .then(({ data }) => { if (data) setGame(prev => ({ ...prev, ...data })); });
+      }
+      if (adminGame?.id) {
+        supabase.from('games').select().eq('id', adminGame.id).maybeSingle()
+          .then(({ data }) => { if (data) setAdminGame(prev => ({ ...prev, ...data })); });
+      }
+    };
+    document.addEventListener('visibilitychange', resync);
+    return () => document.removeEventListener('visibilitychange', resync);
+  }, [game?.id, adminGame?.id]);
+
   // Grab the round's locations once the game is going, but keep answer coordinates
   // away from the guessr while they're guessing (their client would otherwise hold
   // the exact answers). The guessr only needs the seq numbers for their chips.

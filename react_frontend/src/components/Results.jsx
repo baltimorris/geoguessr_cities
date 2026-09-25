@@ -8,6 +8,12 @@ export default function Results({ game, locations }) {
 
   useEffect(() => {
     if (!supabase || !game?.id) return;
+    // locations arrive as a separate async fetch up in App.jsx - on a refresh
+    // right as the game finishes, this effect could run before that's landed
+    // and score everyone at 0 off an empty location list. Wait for a real
+    // fetch instead of flashing that; the `locations` dependency below
+    // reruns this once it shows up.
+    if (!locations.length) return;
     (async () => {
       const { data: teams } = await supabase.from('teams')
         .select('id,name,size').eq('game_id', game.id);
