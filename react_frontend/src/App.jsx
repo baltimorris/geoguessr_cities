@@ -45,6 +45,7 @@ function App() {
   const [adminGame, setAdminGame] = useState(null); // the games row created from the admin panel
   const [adminLocations, setAdminLocations] = useState([]); // so the runner knows if a round is loaded
   const [adminError, setAdminError] = useState('');
+  const [adminTeamCount, setAdminTeamCount] = useState(0); // how many teams have checked in, while the runner's still in the lobby deciding when to start
   const [revealTotal, setRevealTotal] = useState(null); // how many reveal steps this round has, so the remote knows when to stop offering "Reveal next"
   const [generating, setGenerating] = useState(false);
   const [locations, setLocations] = useState([]);
@@ -182,6 +183,23 @@ function App() {
       .select('round,seq').eq('game_id', adminGame.id)
       .then(({ data }) => setAdminLocations(data || []));
   }, [adminGame?.id, adminGame?.status, adminGame?.current_round]);
+
+  // Live team headcount while the runner's watching the lobby fill up - with
+  // a full room of teams checking in on their own phones, there was no way
+  // to tell how many had actually joined before hitting Start.
+  useEffect(() => {
+    if (!supabase || !adminGame?.id || adminGame.status !== 'lobby') { setAdminTeamCount(0); return; }
+    const refresh = () => supabase.from('teams')
+      .select('id', { count: 'exact', head: true }).eq('game_id', adminGame.id)
+      .then(({ count }) => setAdminTeamCount(count || 0));
+    refresh();
+    const channel = supabase.channel(`admin-teams-${adminGame.id}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'teams', filter: `game_id=eq.${adminGame.id}` },
+        refresh)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [adminGame?.id, adminGame?.status]);
 
   const roundLocations = locations.filter(l => l.round === currentRound);
 
@@ -414,6 +432,7 @@ function App() {
               adminError = {adminError}
               adminRoundOver = {adminRoundOver}
               adminLocationCount = {adminLocations.length}
+              adminTeamCount = {adminTeamCount}
               revealTotal = {revealTotal}
               team = {team}
               role = {role}

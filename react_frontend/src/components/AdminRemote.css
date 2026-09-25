@@ -56,6 +56,11 @@
   padding: 0.9rem 0 0;
 }
 
+.admin-remote-back:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .admin-remote-footer {
   display: flex;
   flex-direction: column;

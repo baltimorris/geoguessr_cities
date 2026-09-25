@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import Btn from './Btn';
 import './AdminRemote.css';
@@ -8,10 +8,25 @@ import './AdminRemote.css';
 // of a wall of buttons you could tap in the wrong order or past the end of
 // the reveal - plus a back button for the one step it's safe to undo.
 export default function AdminRemote({
-  game, locationCount, generating, error, roundOver, revealTotal,
+  game, locationCount, teamCount = 0, generating, error, roundOver, revealTotal,
   onClose, onSeedLocations, onStartGame, onEndRound,
   onRevealNext, onRevealBack, onNextRound, onFinishGame, onNewGame,
 }) {
+  // each of these is a round trip to Supabase - an eager double/triple-tap
+  // used to fire several requests that all read the same stale reveal_step
+  // and only stepped once, silently swallowing taps. A useState gate isn't
+  // enough here: two synchronous clicks both close over the same pre-update
+  // "busy" value before React ever re-renders, so both slip through. A ref
+  // updates immediately, so the second click actually sees the first one.
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false); // only drives the disabled look
+  const guarded = fn => async (...args) => {
+    if (busyRef.current || !fn) return;
+    busyRef.current = true;
+    setBusy(true);
+    try { await fn(...args); } finally { busyRef.current = false; setBusy(false); }
+  };
+
   const rounds = game.settings?.rounds ?? 3;
   const round = game.current_round || 1;
   const step = game.reveal_step || 0;
@@ -24,14 +39,15 @@ export default function AdminRemote({
   let primary = null;
 
   if (game.status === 'lobby') {
+    const teamNote = `${teamCount} team${teamCount === 1 ? '' : 's'} checked in`;
     if (locationCount === 0) {
-      status = 'Waiting on locations';
+      status = `Waiting on locations · ${teamNote}`;
       primary = {
         label: generating ? 'Finding street views…' : 'Generate locations',
         onClick: onSeedLocations, disabled: generating, variant: 'outline',
       };
     } else {
-      status = `${locationCount} locations loaded — tell people the code`;
+      status = `${locationCount} locations loaded · ${teamNote}`;
       primary = { label: 'Start game', onClick: onStartGame };
     }
   } else if (game.status === 'active') {
@@ -82,14 +98,14 @@ export default function AdminRemote({
         <Btn
           className="btn-lg admin-remote-primary"
           variant={primary.variant || 'primary'}
-          disabled={primary.disabled}
-          onClick={primary.onClick}
+          disabled={primary.disabled || busy}
+          onClick={guarded(primary.onClick)}
         >
           {primary.label}
         </Btn>
 
         {showBack && (
-          <button className="admin-remote-back" onClick={onRevealBack}>&#9664; Back</button>
+          <button className="admin-remote-back" disabled={busy} onClick={guarded(onRevealBack)}>&#9664; Back</button>
         )}
 
         {game.status !== 'finished' && (
