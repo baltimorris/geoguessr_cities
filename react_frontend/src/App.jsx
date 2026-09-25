@@ -425,7 +425,7 @@ function App() {
     );
   } else if (role && gameStarted && phase === 'reveal') {
     screenKey = 'reveal';
-    screen = <RoundReveal game={game} locations={locations} isDC={isDC} />;
+    screen = <RoundReveal game={game} locations={locations} isDC={isDC} team={team} />;
   } else if (role === 'guessr' && gameStarted) {
     screenKey = 'guessr';
     screen = <GuessrView game={game} team={team} roundLocations={roundLocations} deadline={deadline} now={now} />;

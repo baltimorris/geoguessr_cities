@@ -84,7 +84,7 @@ function EdgeArrows({ map, points }) {
   });
 }
 
-export default function RoundReveal({ game, locations, isDC }) {
+export default function RoundReveal({ game, locations, isDC, team }) {
   const round = game?.current_round || 1;
   const totalRounds = game?.settings?.rounds ?? 3;
   const step = game?.reveal_step || 0; // admin-driven, shared over realtime
@@ -214,13 +214,25 @@ export default function RoundReveal({ game, locations, isDC }) {
   const { shown } = frame;
   const revealed = cur.slice(0, shown);
   const bulkVisible = bulk ? Math.min(bulkShown, bulkCount) : bulkCount;
-  const lastRevealed = bulk ? null : revealed[revealed.length - 1];
   const isClosest = shown === cur.length && cur.length > 0; // final guess for this spot
 
-  // tight on answer+closest for the finale, otherwise frame everything shown
+  const isOwnTeam = g => !!team?.name && g.team.trim().toLowerCase() === team.name.trim().toLowerCase();
+
+  // Which of the "shown" dots are actually on screen right now. During the
+  // bulk step the field pops in as it ramps; once we're stepping through the
+  // podium the field fades out again except for the viewer's own team, so
+  // they can still see where they landed without the rest of the crowd.
+  const dotVisible = revealed.map((g, i) => {
+    if (i >= bulkCount) return true; // podium always shown
+    return bulk ? i < bulkVisible : isOwnTeam(g);
+  });
+  const shownPoints = revealed.filter((_, i) => dotVisible[i]);
+
+  // tight on answer+closest for the finale, otherwise frame whatever's
+  // actually on screen (not the hidden stragglers)
   const cameraPoints = isClosest
     ? [[loc.lat, loc.lng], [revealed[revealed.length - 1].lat, revealed[revealed.length - 1].lng]]
-    : [[loc.lat, loc.lng], ...revealed.map(g => [g.lat, g.lng])];
+    : [[loc.lat, loc.lng], ...shownPoints.map(g => [g.lat, g.lng])];
 
   // teams currently off-screen get an edge arrow instead of their on-map
   // label - showing both used to overlap right at the edge
@@ -232,18 +244,16 @@ export default function RoundReveal({ game, locations, isDC }) {
     if (!pt) return true;
     return pt.x >= 0 && pt.x <= mapSize.x && pt.y >= 0 && pt.y <= mapSize.y;
   };
-  const edgePoints = [
-    ...revealed.slice(0, bulkVisible).map(g => ({ ...g, color: FIELD_COLOR })),
-    ...revealed.slice(bulkCount).map((g, i) => ({ ...g, color: LINE_COLORS[i % LINE_COLORS.length] })),
-  ];
+  const edgePoints = revealed
+    .map((g, i) => ({ ...g, visible: dotVisible[i], color: i < bulkCount ? FIELD_COLOR : LINE_COLORS[(i - bulkCount) % LINE_COLORS.length] }))
+    .filter(g => g.visible);
 
   return (
     <div className="reveal">
-      <p className="round-progress">
-        Round {round} reveal &mdash; location {loc.seq}
-        {bulk && ` · the rest of the field (${shown} team${shown === 1 ? '' : 's'})`}
-        {lastRevealed && ` · ${lastRevealed.team}: ${distanceLabel(lastRevealed.dist)} · ${lastRevealed.score.toLocaleString()} pts`}
-      </p>
+      <div className="reveal-heading">
+        <h2 className="reveal-heading-title">Round {round} Reveal</h2>
+        <p className="reveal-heading-location"><em>Location {loc.seq}</em></p>
+      </div>
       <div className="map-container reveal-map">
         <MapContainer
           center={isDC ? [38.9072, -77.0369] : [40.7128, -74.0060]}
@@ -261,10 +271,13 @@ export default function RoundReveal({ game, locations, isDC }) {
             </Tooltip>
           </Marker>
           {revealed.map((g, i) => {
-            // the bulk group: muted dots with a name+score label centered
-            // above, popping in one at a time as bulkVisible ramps up
+            // the bulk group: muted dots with a placement+name+score label
+            // centered above, popping in one at a time as bulkVisible ramps
+            // up - then fading to just the viewer's own team (if any) once
+            // we move on to stepping through the podium
             if (i < bulkCount) {
-              if (i >= bulkVisible) return null;
+              if (!dotVisible[i]) return null;
+              const fieldRank = cur.length - i; // farthest-first, closest gets rank 1
               return (
                 <React.Fragment key={g.team}>
                   <CircleMarker
@@ -274,7 +287,7 @@ export default function RoundReveal({ game, locations, isDC }) {
                   >
                     {inView(g.lat, g.lng) && (
                       <Tooltip permanent direction="top" offset={[0, -8]} className="reveal-tt reveal-tt-field">
-                        {g.team} · {g.score.toLocaleString()} pts
+                        <b>{fieldRank}.</b> {g.team} · {g.score.toLocaleString()} pts
                       </Tooltip>
                     )}
                   </CircleMarker>

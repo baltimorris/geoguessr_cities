@@ -763,6 +763,24 @@ main:has(.screen-full) {
   font-weight: bold;
 }
 
+/* Reveal screen heading: centered title, the location number below it in
+   italics - the map's own labels carry the per-team detail now */
+.reveal-heading {
+  text-align: center;
+}
+
+.reveal-heading-title {
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.reveal-heading-location {
+  font-style: italic;
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0.2rem 0 0;
+}
+
 /* Final scores */
 .results {
   display: flex;
