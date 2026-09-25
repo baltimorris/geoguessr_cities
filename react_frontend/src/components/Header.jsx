@@ -164,8 +164,15 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
     <motion.header
       className="header"
       // the remote control renders as its own centered overlay, so only the
-      // plain settings pane needs the header itself to grow and make room
-      animate={{ height: settingsOpen && !showRemote ? '100%' : '15vh' }}
+      // plain settings pane needs the header itself to grow and make room.
+      // vh, not %: this header is styled position:relative (see below), so a
+      // % height resolves against .app-container - which is only ever a
+      // reliable full-screen box when ITS OWN height is unambiguous. Content
+      // shorter than one screen (like the code entry form) leaves that
+      // ambiguous, and the settings pane silently clipped to the header's
+      // CSS min-height instead of actually expanding. vh sidesteps that
+      // entirely by resolving straight against the viewport.
+      animate={{ height: settingsOpen && !showRemote ? '100vh' : '15vh' }}
       transition={{ duration: 0.4 }}
       style={{ overflow: 'hidden', position: 'relative' }}
     >

@@ -90,11 +90,6 @@
 }
 
 html, body, #root {
-  /* min-height, not height: a fixed 100% capped the page at one viewport,
-     so anything taller (a long team list) spilled out below the box that
-     actually has the app's background painted on it, showing bare page
-     background underneath instead - this lets the whole page grow with it. */
-  min-height: 100%;
   font-family: 'Inter', system-ui, sans-serif;
   width: 100%;
   overflow-x: hidden;
@@ -104,7 +99,18 @@ html, body, #root {
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  /* min-height, not height: a fixed 100% capped the page at exactly one
+     viewport, so anything taller (a long team list) spilled out below the
+     box that actually has the app's background painted on it, showing bare
+     page background underneath instead - min-height lets it grow with
+     content. vh, not %: a % here needs html/body/#root to each have a
+     *definite* height to resolve against (min-height doesn't count), so
+     chaining % through four ancestors silently breaks the moment any one
+     of them is content-sized instead - vh always resolves straight against
+     the viewport, no matter how this element is nested. dvh accounts for
+     mobile browser chrome (address bar) where real vh runs slightly tall. */
+  min-height: 100vh;
+  min-height: 100dvh;
   justify-content: flex-start;
   align-items: center;
   background-color: var(--bg);
