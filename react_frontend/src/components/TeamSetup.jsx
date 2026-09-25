@@ -61,6 +61,15 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
       const { data: made } = await supabase.from('teams')
         .insert({ game_id: game.id, name, emoji }).select().single();
       teamRow = made;
+    } else if (game.status !== 'lobby') {
+      // Lobby's presence headcount only runs pre-kickoff, so a friend who
+      // joins an existing team after the game's already started would
+      // otherwise leave that team's size (and its handicap) stuck at
+      // whatever it was when the lobby closed, undercounting them forever.
+      const { data: bumped } = await supabase.from('teams')
+        .update({ size: (teamRow.size || 1) + 1 })
+        .eq('id', teamRow.id).select().single();
+      if (bumped) teamRow = bumped;
     }
     if (!teamRow) {
       setOops("Couldn't join the team, try again");
