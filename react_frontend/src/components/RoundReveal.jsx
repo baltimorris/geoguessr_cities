@@ -9,6 +9,7 @@ import { haversineFt, scoreWithHandicap, distanceLabel, latestGuess, maxDistForC
 
 // line colors, farthest guess first
 const LINE_COLORS = ['#bf0d3e', '#ed8b00', '#009cde', '#00B140', '#8e44ad', '#919d9d'];
+const FIELD_COLOR = '#888'; // muted gray for the bulk "everyone else" group
 
 // bullseye divIcon for the true location
 const answerIcon = L.divIcon({
@@ -46,27 +47,36 @@ function MapBus({ onMap, onMove }) {
   return null;
 }
 
+// Leaflet's projection can throw right as the map first mounts or mid-flyTo,
+// before its panes are actually positioned - never let a transient read like
+// that crash the whole reveal.
+function safeContainerPoint(map, lat, lng) {
+  try { return map.latLngToContainerPoint([lat, lng]); } catch { return null; }
+}
+
 // arrows at the map edge for revealed teams that scrolled off-screen. the arrow
 // sits at the team's ACTUAL projected position clamped to the edge, so it lines up
-// with their true latitude (off left/right) or longitude (off top/bottom).
+// with their true latitude (off left/right) or longitude (off top/bottom). each
+// point carries its own color so it matches whatever's drawn for it on the map.
 function EdgeArrows({ map, points }) {
   if (!map) return null;
-  const size = map.getSize();
+  let size;
+  try { size = map.getSize(); } catch { return null; }
   const margin = 30;
-  return points.map((p, i) => {
-    const pt = map.latLngToContainerPoint([p.lat, p.lng]);
+  return points.map((p) => {
+    const pt = safeContainerPoint(map, p.lat, p.lng);
+    if (!pt) return null;
     const inView = pt.x >= 0 && pt.x <= size.x && pt.y >= 0 && pt.y <= size.y;
     if (inView) return null;
     const ex = Math.max(margin, Math.min(size.x - margin, pt.x));
     const ey = Math.max(margin, Math.min(size.y - margin, pt.y));
     const angle = (Math.atan2(pt.y - ey, pt.x - ex) * 180) / Math.PI;
-    const color = LINE_COLORS[i % LINE_COLORS.length];
     // keep the label on the interior side so it doesn't run off the map
     const dir = ex > size.x / 2 ? 'row-reverse' : 'row';
     return (
       <div key={p.team} className="edge-arrow" style={{ left: ex, top: ey, flexDirection: dir }}>
-        <span className="edge-arrow-head" style={{ transform: `rotate(${angle}deg)`, color }}>➤</span>
-        <span className="edge-arrow-label" style={{ borderColor: color }}>
+        <span className="edge-arrow-head" style={{ transform: `rotate(${angle}deg)`, color: p.color }}>➤</span>
+        <span className="edge-arrow-label" style={{ borderColor: p.color }}>
           {p.team} · {distanceLabel(p.dist)}
         </span>
       </div>
@@ -81,6 +91,7 @@ export default function RoundReveal({ game, locations, isDC }) {
   const [data, setData] = useState(null);
   const [map, setMap] = useState(null);
   const [, setTick] = useState(0);
+  const [bulkShown, setBulkShown] = useState(0);
 
   const roundLocations = locations
     .filter(l => l.round === round)
@@ -138,49 +149,71 @@ export default function RoundReveal({ game, locations, isDC }) {
     })();
   }, [game?.id, round, locations]);
 
-  if (!data) return <p>Getting the reveal ready...</p>;
-
   // Small fields step one dot at a time like always. Once a location has more
   // guesses than fit on the podium, everyone outside it drops in as a single
   // bulk step (no tooltip pileup, no dozens of taps), then just the podium
   // gets stepped individually for the suspense - farthest of the podium
-  // first, winner last.
+  // first, winner last. Computed unconditionally (data may still be null) so
+  // the hooks below can depend on it without breaking the rules of hooks.
   const frames = [];
-  roundLocations.forEach((loc, li) => {
-    const n = (data.byLoc[loc.seq] || []).length;
-    if (n <= REVEAL_PODIUM_SIZE) {
-      for (let k = 1; k <= Math.max(1, n); k++) frames.push({ li, shown: Math.min(k, n), bulk: false });
-    } else {
-      const bulkCount = n - REVEAL_PODIUM_SIZE;
-      frames.push({ li, shown: bulkCount, bulk: true });
-      for (let k = 1; k <= REVEAL_PODIUM_SIZE; k++) frames.push({ li, shown: bulkCount + k, bulk: false });
-    }
-  });
+  if (data) {
+    roundLocations.forEach((loc, li) => {
+      const n = (data.byLoc[loc.seq] || []).length;
+      if (n <= REVEAL_PODIUM_SIZE) {
+        for (let k = 1; k <= Math.max(1, n); k++) frames.push({ li, shown: Math.min(k, n), bulk: false });
+      } else {
+        const bulkCount = n - REVEAL_PODIUM_SIZE;
+        frames.push({ li, shown: bulkCount, bulk: true });
+        for (let k = 1; k <= REVEAL_PODIUM_SIZE; k++) frames.push({ li, shown: bulkCount + k, bulk: false });
+      }
+    });
+  }
+  const frame = step < frames.length ? frames[step] : null;
+  const loc = frame ? roundLocations[frame.li] : null;
+  const cur = frame ? (data.byLoc[loc.seq] || []) : [];
+  const bulkCount = cur.length > REVEAL_PODIUM_SIZE ? cur.length - REVEAL_PODIUM_SIZE : 0;
+  const bulk = frame?.bulk || false;
 
-  if (!frames.length || step >= frames.length) {
+  // Pop the field in one at a time instead of dumping the whole group in at
+  // once - resets every time we land on a (new) bulk step.
+  useEffect(() => {
+    if (!bulk) return;
+    setBulkShown(0);
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setBulkShown(i);
+      if (i >= bulkCount) clearInterval(id);
+    }, 90);
+    return () => clearInterval(id);
+  }, [step, bulk, bulkCount]);
+
+  if (!data) return <p>Getting the reveal ready...</p>;
+
+  if (!frame) {
+    // Last round's own "standings" screen used to show cumulative totals,
+    // then Finish game swapped in a Results screen showing the exact same
+    // numbers a second later - jarring and redundant. So once the final
+    // round's reveal is done, just show it as the final scores already;
+    // Finish game becomes a no-visible-change formality after that.
+    const isFinalRound = round >= totalRounds;
     return (
       <div className="results">
-        <h2>Round {round} standings</h2>
+        <h2>{isFinalRound ? 'Final scores' : `Round ${round} standings`}</h2>
         <Standings
           rows={data.standings}
-          renderScore={r => `+${r.roundScore.toLocaleString()} → ${r.total.toLocaleString()}`}
+          renderScore={r => isFinalRound
+            ? r.total.toLocaleString()
+            : `+${r.roundScore.toLocaleString()} → ${r.total.toLocaleString()}`}
         />
-        <p className="team-hint">
-          {round < totalRounds
-            ? 'Hang tight, the next round starts soon'
-            : 'That was the last round, final scores coming up'}
-        </p>
+        {!isFinalRound && <p className="team-hint">Hang tight, the next round starts soon</p>}
       </div>
     );
   }
 
-  const { li, shown, bulk } = frames[step];
-  const loc = roundLocations[li];
-  const cur = data.byLoc[loc.seq] || [];
+  const { shown } = frame;
   const revealed = cur.slice(0, shown);
-  // the field (if any) always occupies the front of the farthest-first list;
-  // the podium is whatever comes after it, regardless of which frame we're on
-  const bulkCount = cur.length > REVEAL_PODIUM_SIZE ? cur.length - REVEAL_PODIUM_SIZE : 0;
+  const bulkVisible = bulk ? Math.min(bulkShown, bulkCount) : bulkCount;
   const lastRevealed = bulk ? null : revealed[revealed.length - 1];
   const isClosest = shown === cur.length && cur.length > 0; // final guess for this spot
 
@@ -188,6 +221,21 @@ export default function RoundReveal({ game, locations, isDC }) {
   const cameraPoints = isClosest
     ? [[loc.lat, loc.lng], [revealed[revealed.length - 1].lat, revealed[revealed.length - 1].lng]]
     : [[loc.lat, loc.lng], ...revealed.map(g => [g.lat, g.lng])];
+
+  // teams currently off-screen get an edge arrow instead of their on-map
+  // label - showing both used to overlap right at the edge
+  let mapSize = null;
+  try { mapSize = map?.getSize() ?? null; } catch { mapSize = null; }
+  const inView = (lat, lng) => {
+    if (!map || !mapSize) return true;
+    const pt = safeContainerPoint(map, lat, lng);
+    if (!pt) return true;
+    return pt.x >= 0 && pt.x <= mapSize.x && pt.y >= 0 && pt.y <= mapSize.y;
+  };
+  const edgePoints = [
+    ...revealed.slice(0, bulkVisible).map(g => ({ ...g, color: FIELD_COLOR })),
+    ...revealed.slice(bulkCount).map((g, i) => ({ ...g, color: LINE_COLORS[i % LINE_COLORS.length] })),
+  ];
 
   return (
     <div className="reveal">
@@ -213,19 +261,26 @@ export default function RoundReveal({ game, locations, isDC }) {
             </Tooltip>
           </Marker>
           {revealed.map((g, i) => {
-            // the bulk group is unnamed dots and thin lines - no tooltip
-            // pileup for however many teams landed out here
+            // the bulk group: muted dots with a name+score label centered
+            // above, popping in one at a time as bulkVisible ramps up
             if (i < bulkCount) {
+              if (i >= bulkVisible) return null;
               return (
                 <React.Fragment key={g.team}>
                   <CircleMarker
                     center={[g.lat, g.lng]}
                     radius={5}
-                    pathOptions={{ color: '#fff', weight: 1, fillColor: '#888', fillOpacity: 0.85, className: 'reveal-dot reveal-dot-field' }}
-                  />
+                    pathOptions={{ color: '#fff', weight: 1, fillColor: FIELD_COLOR, fillOpacity: 0.85, className: 'reveal-dot reveal-dot-field' }}
+                  >
+                    {inView(g.lat, g.lng) && (
+                      <Tooltip permanent direction="top" offset={[0, -8]} className="reveal-tt reveal-tt-field">
+                        {g.team} · {g.score.toLocaleString()} pts
+                      </Tooltip>
+                    )}
+                  </CircleMarker>
                   <Polyline
                     positions={[[loc.lat, loc.lng], [g.lat, g.lng]]}
-                    pathOptions={{ color: '#888', weight: 1.5, opacity: 0.5, className: 'reveal-line' }}
+                    pathOptions={{ color: FIELD_COLOR, weight: 1.5, opacity: 0.5, className: 'reveal-line' }}
                   />
                 </React.Fragment>
               );
@@ -240,9 +295,11 @@ export default function RoundReveal({ game, locations, isDC }) {
                   radius={9}
                   pathOptions={{ color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, className: 'reveal-dot' }}
                 >
-                  <Tooltip permanent direction="auto" offset={[10, 0]} className={`reveal-tt tt-${podiumIndex}`}>
-                    <b>{rank}.</b> {g.team} · {distanceLabel(g.dist)} · {g.score.toLocaleString()} pts
-                  </Tooltip>
+                  {inView(g.lat, g.lng) && (
+                    <Tooltip permanent direction="auto" offset={[10, 0]} className={`reveal-tt tt-${podiumIndex}`}>
+                      <b>{rank}.</b> {g.team} · {distanceLabel(g.dist)} · {g.score.toLocaleString()} pts
+                    </Tooltip>
+                  )}
                 </CircleMarker>
                 <Polyline
                   positions={[[loc.lat, loc.lng], [g.lat, g.lng]]}
@@ -252,7 +309,7 @@ export default function RoundReveal({ game, locations, isDC }) {
             );
           })}
         </MapContainer>
-        <EdgeArrows map={map} points={revealed.slice(bulkCount)} />
+        <EdgeArrows map={map} points={edgePoints} />
       </div>
       <p className="team-hint">The game runner is walking through the reveal</p>
     </div>

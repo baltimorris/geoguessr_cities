@@ -105,7 +105,14 @@ export default function AdminRemote({
         </Btn>
 
         {showBack && (
-          <button className="admin-remote-back" disabled={busy} onClick={guarded(onRevealBack)}>&#9664; Back</button>
+          <Btn
+            variant="outline"
+            className="btn-lg admin-remote-primary"
+            disabled={busy}
+            onClick={guarded(onRevealBack)}
+          >
+            &#9664; Back
+          </Btn>
         )}
 
         {game.status !== 'finished' && (
