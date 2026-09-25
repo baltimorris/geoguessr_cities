@@ -8,7 +8,7 @@ import './AdminRemote.css';
 // of a wall of buttons you could tap in the wrong order or past the end of
 // the reveal - plus a back button for the one step it's safe to undo.
 export default function AdminRemote({
-  game, locationCount, teamCount = 0, generating, error, roundOver, revealTotal,
+  game, locationCount, teamCount = 0, generating, error, roundOver, revealTotal, revealLocationSteps,
   onClose, onSeedLocations, onStartGame, onEndRound,
   onRevealNext, onRevealBack, onNextRound, onFinishGame, onNewGame,
 }) {
@@ -55,11 +55,23 @@ export default function AdminRemote({
       status = `Round ${round} of ${rounds} — guessing`;
       primary = { label: 'End round now', onClick: onEndRound, variant: 'outline' };
     } else if (!revealDone) {
-      const shown = revealTotal ? Math.min(step + 1, revealTotal) : step + 1;
-      status = `Revealing round ${round} — ${shown} of ${revealTotal ?? '…'}`;
-      primary = { label: 'Reveal next ▸', onClick: onRevealNext };
+      // last round gets 3 extra steps after its locations, one per place, so
+      // the runner hands over 3rd/2nd/1st one at a time instead of the whole
+      // podium landing at once - once we're past the locations, relabel the
+      // button so they know exactly which place they're about to announce
+      const inTopReveal = lastRound && revealLocationSteps !== null && step >= revealLocationSteps;
+      if (inTopReveal) {
+        const place = 3 - (step - revealLocationSteps); // 3rd, then 2nd, then 1st
+        const placeLabel = place === 1 ? '1st' : place === 2 ? '2nd' : '3rd';
+        status = 'Announcing the top 3…';
+        primary = { label: `Reveal ${placeLabel} place ▸`, onClick: onRevealNext };
+      } else {
+        const shown = revealLocationSteps ? Math.min(step + 1, revealLocationSteps) : step + 1;
+        status = `Revealing round ${round} — ${shown} of ${revealLocationSteps ?? '…'}`;
+        primary = { label: 'Reveal next ▸', onClick: onRevealNext };
+      }
     } else {
-      status = `Round ${round} fully revealed`;
+      status = lastRound ? 'Top 3 revealed!' : `Round ${round} fully revealed`;
       primary = lastRound
         ? { label: 'Finish game ▸', onClick: onFinishGame, variant: 'danger' }
         : { label: `Start round ${round + 1} ▸`, onClick: onNextRound };

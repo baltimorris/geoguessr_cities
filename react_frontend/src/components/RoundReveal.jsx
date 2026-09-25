@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, Marker, CircleMarker, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -82,6 +83,54 @@ function EdgeArrows({ map, points }) {
       </div>
     );
   });
+}
+
+// One spot on the final podium - "???" until the admin hands it to us, then
+// pops in with a little spring. Keying the revealed/pending content lets it
+// actually remount (rather than just re-render) so the pop-in replays.
+function PodiumSlot({ rank, team }) {
+  const cls = rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze';
+  const label = rank === 1 ? '1st' : rank === 2 ? '2nd' : '3rd';
+  const emoji = rank === 1 ? '🏆' : rank === 2 ? '🥈' : '🥉';
+  return (
+    <div className={`final-podium-slot ${cls} ${team ? 'revealed' : ''}`}>
+      <span className="final-podium-rank">{emoji} {label}</span>
+      <AnimatePresence mode="wait">
+        {team ? (
+          <motion.div
+            key="revealed"
+            className="final-podium-content"
+            initial={{ opacity: 0, scale: 0.4, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 16 }}
+          >
+            <span className="final-podium-name">
+              {team.name}{team.size > 2 && ` · ${team.size} players`}
+            </span>
+            <span className="final-podium-score">{team.total.toLocaleString()}</span>
+          </motion.div>
+        ) : (
+          <motion.div key="pending" className="final-podium-mystery" initial={false}>???</motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Pure fidget toy for the room while they wait between announcements - no
+// sound, no game effect, just something to tap. Shakes while held, same
+// idea as a real drumroll building up, and settles back when released.
+function DrumButton() {
+  return (
+    <motion.button
+      type="button"
+      className="drum-button"
+      whileTap={{ x: [0, -3, 3, -3, 3, 0], transition: { duration: 0.15, repeat: Infinity } }}
+      aria-label="Drumroll (just for fun, doesn't affect the game)"
+    >
+      🥁
+    </motion.button>
+  );
 }
 
 export default function RoundReveal({ game, locations, isDC, team }) {
@@ -191,22 +240,49 @@ export default function RoundReveal({ game, locations, isDC, team }) {
   if (!data) return <p>Getting the reveal ready...</p>;
 
   if (!frame) {
-    // Last round's own "standings" screen used to show cumulative totals,
-    // then Finish game swapped in a Results screen showing the exact same
-    // numbers a second later - jarring and redundant. So once the final
-    // round's reveal is done, just show it as the final scores already;
-    // Finish game becomes a no-visible-change formality after that.
     const isFinalRound = round >= totalRounds;
+
+    if (!isFinalRound) {
+      return (
+        <div className="results">
+          <h2>Round {round} standings</h2>
+          <Standings
+            rows={data.standings}
+            renderScore={r => `+${r.roundScore.toLocaleString()} → ${r.total.toLocaleString()}`}
+          />
+          <p className="team-hint">Hang tight, the next round starts soon</p>
+        </div>
+      );
+    }
+
+    // The finale: 4th place and below just show up, no suspense needed
+    // there. The top 3 stay "???" until the runner hands them over one at a
+    // time (3rd, then 2nd, then 1st) so they can announce each one - that's
+    // everything past the location frames, one step per place.
+    const topReveal = Math.max(0, Math.min(3, step - frames.length));
+    const podium = data.standings.slice(0, 3); // [1st, 2nd, 3rd]
+    const rest = data.standings.slice(3);
     return (
-      <div className="results">
-        <h2>{isFinalRound ? 'Final scores' : `Round ${round} standings`}</h2>
-        <Standings
-          rows={data.standings}
-          renderScore={r => isFinalRound
-            ? r.total.toLocaleString()
-            : `+${r.roundScore.toLocaleString()} → ${r.total.toLocaleString()}`}
-        />
-        {!isFinalRound && <p className="team-hint">Hang tight, the next round starts soon</p>}
+      <div className="results final-countdown">
+        <h2>Final scores</h2>
+        {rest.length > 0 && (
+          <ol className="results-list final-countdown-rest">
+            {rest.map(r => (
+              <li key={r.name}>
+                <span className="results-team">
+                  {r.name}{r.size > 2 && <span className="team-size-tag"> · {r.size} players</span>}
+                </span>
+                <span className="results-score">{r.total.toLocaleString()}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <div className="final-podium">
+          {podium[2] && <PodiumSlot rank={3} team={topReveal >= 1 ? podium[2] : null} />}
+          {podium[1] && <PodiumSlot rank={2} team={topReveal >= 2 ? podium[1] : null} />}
+          {podium[0] && <PodiumSlot rank={1} team={topReveal >= 3 ? podium[0] : null} />}
+        </div>
+        <DrumButton />
       </div>
     );
   }

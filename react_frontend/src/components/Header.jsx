@@ -47,7 +47,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onRevealBack, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, adminTeamCount = 0, revealTotal, team, role, onLeaveGame }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onRevealBack, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, adminTeamCount = 0, revealTotal, revealLocationSteps, team, role, onLeaveGame }) {
   const isNYC = !isDC;
   // a reload shouldn't hand the runner's phone back to a player
   const wasAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('lg_admin') === '1';
@@ -280,6 +280,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
             error={adminError}
             roundOver={adminRoundOver}
             revealTotal={revealTotal}
+            revealLocationSteps={revealLocationSteps}
             onClose={() => setSettingsOpen(false)}
             onSeedLocations={onSeedLocations}
             onStartGame={onStartGame}

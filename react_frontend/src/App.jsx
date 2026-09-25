@@ -47,6 +47,7 @@ function App() {
   const [adminError, setAdminError] = useState('');
   const [adminTeamCount, setAdminTeamCount] = useState(0); // how many teams have checked in, while the runner's still in the lobby deciding when to start
   const [revealTotal, setRevealTotal] = useState(null); // how many reveal steps this round has, so the remote knows when to stop offering "Reveal next"
+  const [revealLocationSteps, setRevealLocationSteps] = useState(null); // the portion of revealTotal that's just the locations, so the remote can tell "still revealing locations" from "announcing the top 3"
   const [generating, setGenerating] = useState(false);
   const [locations, setLocations] = useState([]);
   const [teamName, setTeamName] = useState('');
@@ -239,7 +240,11 @@ function App() {
   // reveal, same tally RoundReveal does for players, so the runner's control
   // never outpaces or lags theirs.
   useEffect(() => {
-    if (!supabase || !adminGame?.id || adminGame.status !== 'active') { setRevealTotal(null); return; }
+    if (!supabase || !adminGame?.id || adminGame.status !== 'active') {
+      setRevealTotal(null);
+      setRevealLocationSteps(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const { data: teams } = await supabase.from('teams').select('id,name,size').eq('game_id', adminGame.id);
@@ -250,11 +255,17 @@ function App() {
       if (cancelled) return;
       const merged = mergeTeams(teams || []);
       const locsThisRound = adminLocations.filter(l => l.round === adminGame.current_round);
-      const total = locsThisRound.reduce((sum, loc) => {
+      const locationSteps = locsThisRound.reduce((sum, loc) => {
         const n = merged.filter(t => t.ids.some(id => (guesses || []).some(g => g.team_id === id && g.location === loc.seq))).length;
         return sum + revealFrameCount(n);
       }, 0);
-      setRevealTotal(total);
+      // the last round gets 3 extra steps after its locations - one per
+      // place - so the runner can hand over 3rd/2nd/1st one at a time
+      // instead of the whole podium landing at once
+      const isFinalRound = adminGame.current_round >= (adminGame.settings?.rounds ?? 3);
+      const topSteps = isFinalRound ? Math.min(3, merged.length) : 0;
+      setRevealLocationSteps(locationSteps);
+      setRevealTotal(locationSteps + topSteps);
     })();
     return () => { cancelled = true; };
   }, [adminGame?.id, adminGame?.status, adminGame?.current_round, adminRoundOver, adminLocations]);
@@ -459,6 +470,7 @@ function App() {
               adminLocationCount = {adminLocations.length}
               adminTeamCount = {adminTeamCount}
               revealTotal = {revealTotal}
+              revealLocationSteps = {revealLocationSteps}
               team = {team}
               role = {role}
               onLeaveGame = {leaveGame} />
