@@ -11,7 +11,7 @@ import Results from './components/Results';
 import { motion } from 'framer-motion';
 import { supabase } from './supabase';
 import { generateLocations } from './generateLocations';
-import { mergeTeams } from './scoring';
+import { mergeTeams, revealFrameCount } from './scoring';
 
 // Defaults lifted from 00_parameters.R
 const defaultGameSettings = {
@@ -209,10 +209,11 @@ function App() {
     : null;
   const adminRoundOver = adminGame?.status === 'active' && adminDeadline !== null && now >= adminDeadline;
 
-  // How many reveal frames the current round actually has (one per location,
-  // plus one more per team that guessed there) - the remote uses this to know
-  // when "Reveal next" has nothing left to reveal, same tally RoundReveal
-  // does for players, so the runner's control never outpaces or lags theirs.
+  // How many reveal frames the current round actually has (the field bulk-
+  // reveals in one step per location, then the podium steps one at a time) -
+  // the remote uses this to know when "Reveal next" has nothing left to
+  // reveal, same tally RoundReveal does for players, so the runner's control
+  // never outpaces or lags theirs.
   useEffect(() => {
     if (!supabase || !adminGame?.id || adminGame.status !== 'active') { setRevealTotal(null); return; }
     let cancelled = false;
@@ -227,7 +228,7 @@ function App() {
       const locsThisRound = adminLocations.filter(l => l.round === adminGame.current_round);
       const total = locsThisRound.reduce((sum, loc) => {
         const n = merged.filter(t => t.ids.some(id => (guesses || []).some(g => g.team_id === id && g.location === loc.seq))).length;
-        return sum + Math.max(1, n);
+        return sum + revealFrameCount(n);
       }, 0);
       setRevealTotal(total);
     })();

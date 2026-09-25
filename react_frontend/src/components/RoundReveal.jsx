@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import ThemedTiles from './ThemedTiles';
 import { supabase } from '../supabase';
 import Standings from './Standings';
-import { haversineFt, scoreWithHandicap, distanceLabel, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
+import { haversineFt, scoreWithHandicap, distanceLabel, latestGuess, maxDistForCity, mergeTeams, REVEAL_PODIUM_SIZE } from '../scoring';
 
 // line colors, farthest guess first
 const LINE_COLORS = ['#bf0d3e', '#ed8b00', '#009cde', '#00B140', '#8e44ad', '#919d9d'];
@@ -134,10 +134,21 @@ export default function RoundReveal({ game, locations, isDC }) {
 
   if (!data) return <p>Getting the reveal ready...</p>;
 
+  // Small fields step one dot at a time like always. Once a location has more
+  // guesses than fit on the podium, everyone outside it drops in as a single
+  // bulk step (no tooltip pileup, no dozens of taps), then just the podium
+  // gets stepped individually for the suspense - farthest of the podium
+  // first, winner last.
   const frames = [];
   roundLocations.forEach((loc, li) => {
     const n = (data.byLoc[loc.seq] || []).length;
-    for (let k = 1; k <= Math.max(1, n); k++) frames.push({ li, shown: Math.min(k, n) });
+    if (n <= REVEAL_PODIUM_SIZE) {
+      for (let k = 1; k <= Math.max(1, n); k++) frames.push({ li, shown: Math.min(k, n), bulk: false });
+    } else {
+      const bulkCount = n - REVEAL_PODIUM_SIZE;
+      frames.push({ li, shown: bulkCount, bulk: true });
+      for (let k = 1; k <= REVEAL_PODIUM_SIZE; k++) frames.push({ li, shown: bulkCount + k, bulk: false });
+    }
   });
 
   if (!frames.length || step >= frames.length) {
@@ -157,11 +168,14 @@ export default function RoundReveal({ game, locations, isDC }) {
     );
   }
 
-  const { li, shown } = frames[step];
+  const { li, shown, bulk } = frames[step];
   const loc = roundLocations[li];
   const cur = data.byLoc[loc.seq] || [];
   const revealed = cur.slice(0, shown);
-  const lastRevealed = revealed[revealed.length - 1];
+  // the field (if any) always occupies the front of the farthest-first list;
+  // the podium is whatever comes after it, regardless of which frame we're on
+  const bulkCount = cur.length > REVEAL_PODIUM_SIZE ? cur.length - REVEAL_PODIUM_SIZE : 0;
+  const lastRevealed = bulk ? null : revealed[revealed.length - 1];
   const isClosest = shown === cur.length && cur.length > 0; // final guess for this spot
 
   // tight on answer+closest for the finale, otherwise frame everything shown
@@ -173,6 +187,7 @@ export default function RoundReveal({ game, locations, isDC }) {
     <div className="reveal">
       <p className="round-progress">
         Round {round} reveal &mdash; location {loc.seq}
+        {bulk && ` · the rest of the field (${shown} team${shown === 1 ? '' : 's'})`}
         {lastRevealed && ` · ${lastRevealed.team}: ${distanceLabel(lastRevealed.dist)} · ${lastRevealed.score.toLocaleString()} pts`}
       </p>
       <div className="map-container reveal-map">
@@ -192,7 +207,25 @@ export default function RoundReveal({ game, locations, isDC }) {
             </Tooltip>
           </Marker>
           {revealed.map((g, i) => {
-            const color = LINE_COLORS[i % LINE_COLORS.length];
+            // the bulk group is unnamed dots and thin lines - no tooltip
+            // pileup for however many teams landed out here
+            if (i < bulkCount) {
+              return (
+                <React.Fragment key={g.team}>
+                  <CircleMarker
+                    center={[g.lat, g.lng]}
+                    radius={5}
+                    pathOptions={{ color: '#fff', weight: 1, fillColor: '#888', fillOpacity: 0.85, className: 'reveal-dot reveal-dot-field' }}
+                  />
+                  <Polyline
+                    positions={[[loc.lat, loc.lng], [g.lat, g.lng]]}
+                    pathOptions={{ color: '#888', weight: 1.5, opacity: 0.5, className: 'reveal-line' }}
+                  />
+                </React.Fragment>
+              );
+            }
+            const podiumIndex = i - bulkCount; // 0-based within the individually-stepped podium
+            const color = LINE_COLORS[podiumIndex % LINE_COLORS.length];
             const rank = cur.length - i; // farthest-first, closest gets rank 1
             return (
               <React.Fragment key={g.team}>
@@ -201,7 +234,7 @@ export default function RoundReveal({ game, locations, isDC }) {
                   radius={9}
                   pathOptions={{ color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, className: 'reveal-dot' }}
                 >
-                  <Tooltip permanent direction="auto" offset={[10, 0]} className={`reveal-tt tt-${i}`}>
+                  <Tooltip permanent direction="auto" offset={[10, 0]} className={`reveal-tt tt-${podiumIndex}`}>
                     <b>{rank}.</b> {g.team} · {distanceLabel(g.dist)} · {g.score.toLocaleString()} pts
                   </Tooltip>
                 </CircleMarker>
@@ -213,7 +246,7 @@ export default function RoundReveal({ game, locations, isDC }) {
             );
           })}
         </MapContainer>
-        <EdgeArrows map={map} points={revealed} />
+        <EdgeArrows map={map} points={revealed.slice(bulkCount)} />
       </div>
       <p className="team-hint">The game runner is walking through the reveal</p>
     </div>

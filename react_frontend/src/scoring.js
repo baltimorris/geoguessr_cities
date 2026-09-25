@@ -60,3 +60,19 @@ export const scoreWithHandicap = (distance, maxPoints, maxDist, size, enabled = 
 };
 
 export const maxDistForCity = city => (city === 'NYC' ? 130000 : 73000);
+
+// Stepping through one dot per team was fine for a handful of teams, but at
+// a real full-room game (20 teams) it's ~100 taps to reveal a single round
+// and the tooltips pile into an unreadable stack once guesses cluster. So
+// everyone outside the closest few drops in at once as one "the field"
+// step, then just the podium gets stepped one at a time for the suspense -
+// same shape as the final standings animation already uses.
+export const REVEAL_PODIUM_SIZE = 3;
+
+// How many reveal steps one location needs: 1 bulk step for the field (only
+// when there's actually a field beyond the podium) plus one step per podium
+// spot, or just one step per team when the whole location IS the podium.
+export const revealFrameCount = (n) => {
+  if (n <= REVEAL_PODIUM_SIZE) return Math.max(1, n);
+  return 1 + REVEAL_PODIUM_SIZE;
+};
