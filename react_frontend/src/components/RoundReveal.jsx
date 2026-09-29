@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { MapContainer, Marker, CircleMarker, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ThemedTiles from './ThemedTiles';
 import { supabase } from '../supabase';
 import Standings from './Standings';
+import PodiumSlot from './PodiumSlot';
 import { haversineFt, scoreWithHandicap, distanceLabel, latestGuess, maxDistForCity, mergeTeams, REVEAL_PODIUM_SIZE } from '../scoring';
 
 // line colors, farthest guess first
@@ -78,43 +79,11 @@ function EdgeArrows({ map, points }) {
       <div key={p.team} className="edge-arrow" style={{ left: ex, top: ey, flexDirection: dir }}>
         <span className="edge-arrow-head" style={{ transform: `rotate(${angle}deg)`, color: p.color }}>➤</span>
         <span className="edge-arrow-label" style={{ borderColor: p.color }}>
-          {p.team} · {distanceLabel(p.dist)}
+          {p.team}<br />{distanceLabel(p.dist)}
         </span>
       </div>
     );
   });
-}
-
-// One spot on the final podium - "???" until the admin hands it to us, then
-// pops in with a little spring. Keying the revealed/pending content lets it
-// actually remount (rather than just re-render) so the pop-in replays.
-function PodiumSlot({ rank, team }) {
-  const cls = rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze';
-  const label = rank === 1 ? '1st' : rank === 2 ? '2nd' : '3rd';
-  const emoji = rank === 1 ? '🏆' : rank === 2 ? '🥈' : '🥉';
-  return (
-    <div className={`final-podium-slot ${cls} ${team ? 'revealed' : ''}`}>
-      <span className="final-podium-rank">{emoji} {label}</span>
-      <AnimatePresence mode="wait">
-        {team ? (
-          <motion.div
-            key="revealed"
-            className="final-podium-content"
-            initial={{ opacity: 0, scale: 0.4, y: 24 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 16 }}
-          >
-            <span className="final-podium-name">
-              {team.name}{team.size > 2 && ` · ${team.size} players`}
-            </span>
-            <span className="final-podium-score">{team.total.toLocaleString()}</span>
-          </motion.div>
-        ) : (
-          <motion.div key="pending" className="final-podium-mystery" initial={false}>???</motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
 }
 
 // Pure fidget toy for the room while they wait between announcements - no
@@ -194,7 +163,30 @@ export default function RoundReveal({ game, locations, isDC, team }) {
         return { name: t.name, roundScore, total, size: sizeOf(t) };
       }).sort((a, b) => b.total - a.total);
 
-      setData({ byLoc, standings });
+      // rank movement vs. where the team stood after the previous round, so
+      // the standings screen can show "up 2" / "down 1" instead of just a
+      // static list - no prior round on round 1, so no deltas there.
+      let prevRank = null;
+      if (round > 1) {
+        const priorLocs = locations.filter(l => l.round < round);
+        const priorStandings = merged.map(t => {
+          let total = 0;
+          for (const loc of priorLocs) {
+            const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
+            if (!g) continue;
+            total += scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, sizeOf(t), handicap);
+          }
+          return { name: t.name, total };
+        }).sort((a, b) => b.total - a.total);
+        prevRank = {};
+        priorStandings.forEach((t, i) => { prevRank[t.name] = i + 1; });
+      }
+      const standingsWithDelta = standings.map((r, i) => ({
+        ...r,
+        rankDelta: prevRank && prevRank[r.name] != null ? prevRank[r.name] - (i + 1) : null,
+      }));
+
+      setData({ byLoc, standings: standingsWithDelta });
     })();
   }, [game?.id, round, locations]);
 
@@ -265,6 +257,14 @@ export default function RoundReveal({ game, locations, isDC, team }) {
     return (
       <div className="results final-countdown">
         <h2>Final scores</h2>
+        {/* reads top to bottom like any other standings list - 1st down to
+            last - the top 3 just show "???" until the runner hands each one
+            over, instead of getting stacked below everyone else */}
+        <div className="final-podium">
+          {podium[0] && <PodiumSlot rank={1} team={topReveal >= 3 ? podium[0] : null} />}
+          {podium[1] && <PodiumSlot rank={2} team={topReveal >= 2 ? podium[1] : null} />}
+          {podium[2] && <PodiumSlot rank={3} team={topReveal >= 1 ? podium[2] : null} />}
+        </div>
         {rest.length > 0 && (
           <ol className="results-list final-countdown-rest">
             {rest.map(r => (
@@ -277,11 +277,6 @@ export default function RoundReveal({ game, locations, isDC, team }) {
             ))}
           </ol>
         )}
-        <div className="final-podium">
-          {podium[2] && <PodiumSlot rank={3} team={topReveal >= 1 ? podium[2] : null} />}
-          {podium[1] && <PodiumSlot rank={2} team={topReveal >= 2 ? podium[1] : null} />}
-          {podium[0] && <PodiumSlot rank={1} team={topReveal >= 3 ? podium[0] : null} />}
-        </div>
         <DrumButton />
       </div>
     );
@@ -294,15 +289,21 @@ export default function RoundReveal({ game, locations, isDC, team }) {
 
   const isOwnTeam = g => !!team?.name && g.team.trim().toLowerCase() === team.name.trim().toLowerCase();
 
-  // Which of the "shown" dots are actually on screen right now. During the
-  // bulk step the field pops in as it ramps; once we're stepping through the
-  // podium the field fades out again except for the viewer's own team, so
-  // they can still see where they landed without the rest of the crowd.
-  const dotVisible = revealed.map((g, i) => {
+  // Three states per field dot: not yet appeared (still popping in during the
+  // bulk step - stays fully hidden), appeared+prominent (podium, or the
+  // viewer's own team - full balloon), or appeared+muted (a straggler that's
+  // had its turn once we move on to stepping the podium - line and label
+  // stay so they can still see where they landed, just the balloon goes away).
+  const dotAppeared = revealed.map((g, i) => {
     if (i >= bulkCount) return true; // podium always shown
-    return bulk ? i < bulkVisible : isOwnTeam(g);
+    return bulk ? i < bulkVisible : true; // field's bulk step has already run its course
   });
-  const shownPoints = revealed.filter((_, i) => dotVisible[i]);
+  const dotMuted = revealed.map((g, i) => {
+    if (i >= bulkCount) return false; // podium is never muted
+    if (bulk) return false; // still popping in, not muted - just not appeared yet if false above
+    return !isOwnTeam(g);
+  });
+  const shownPoints = revealed.filter((_, i) => dotAppeared[i] && !dotMuted[i]);
 
   // tight on answer+closest for the finale, otherwise frame whatever's
   // actually on screen (not the hidden stragglers)
@@ -321,7 +322,7 @@ export default function RoundReveal({ game, locations, isDC, team }) {
     return pt.x >= 0 && pt.x <= mapSize.x && pt.y >= 0 && pt.y <= mapSize.y;
   };
   const edgePoints = revealed
-    .map((g, i) => ({ ...g, visible: dotVisible[i], color: i < bulkCount ? FIELD_COLOR : LINE_COLORS[(i - bulkCount) % LINE_COLORS.length] }))
+    .map((g, i) => ({ ...g, visible: dotAppeared[i] && !dotMuted[i], color: i < bulkCount ? FIELD_COLOR : LINE_COLORS[(i - bulkCount) % LINE_COLORS.length] }))
     .filter(g => g.visible);
 
   return (
@@ -352,24 +353,25 @@ export default function RoundReveal({ game, locations, isDC, team }) {
             // up - then fading to just the viewer's own team (if any) once
             // we move on to stepping through the podium
             if (i < bulkCount) {
-              if (!dotVisible[i]) return null;
+              if (!dotAppeared[i]) return null;
+              const muted = dotMuted[i];
               const fieldRank = cur.length - i; // farthest-first, closest gets rank 1
               return (
                 <React.Fragment key={g.team}>
                   <CircleMarker
                     center={[g.lat, g.lng]}
-                    radius={5}
-                    pathOptions={{ color: '#fff', weight: 1, fillColor: FIELD_COLOR, fillOpacity: 0.85, className: 'reveal-dot reveal-dot-field' }}
+                    radius={muted ? 0 : 5}
+                    pathOptions={{ color: '#fff', weight: muted ? 0 : 1, fillColor: FIELD_COLOR, fillOpacity: muted ? 0 : 0.85, className: `reveal-dot reveal-dot-field${muted ? ' reveal-dot-muted' : ''}` }}
                   >
                     {inView(g.lat, g.lng) && (
-                      <Tooltip permanent direction="top" offset={[0, -8]} className="reveal-tt reveal-tt-field">
-                        <b>{fieldRank}.</b> {g.team} · {g.score.toLocaleString()} pts
+                      <Tooltip permanent direction="top" offset={[0, -8]} className={`reveal-tt reveal-tt-field${muted ? ' reveal-tt-field-muted' : ''}`}>
+                        <b>{fieldRank}.</b> {g.team}<br />{g.score.toLocaleString()} pts
                       </Tooltip>
                     )}
                   </CircleMarker>
                   <Polyline
                     positions={[[loc.lat, loc.lng], [g.lat, g.lng]]}
-                    pathOptions={{ color: FIELD_COLOR, weight: 1.5, opacity: 0.5, className: 'reveal-line' }}
+                    pathOptions={{ color: FIELD_COLOR, weight: 1.5, opacity: muted ? 0.35 : 0.5, className: 'reveal-line' }}
                   />
                 </React.Fragment>
               );
@@ -386,7 +388,7 @@ export default function RoundReveal({ game, locations, isDC, team }) {
                 >
                   {inView(g.lat, g.lng) && (
                     <Tooltip permanent direction="auto" offset={[10, 0]} className={`reveal-tt tt-${podiumIndex}`}>
-                      <b>{rank}.</b> {g.team} · {distanceLabel(g.dist)} · {g.score.toLocaleString()} pts
+                      <b>{rank}.</b> {g.team}<br />{distanceLabel(g.dist)} | {g.score.toLocaleString()} pts
                     </Tooltip>
                   )}
                 </CircleMarker>

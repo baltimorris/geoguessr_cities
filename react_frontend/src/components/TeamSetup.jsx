@@ -127,8 +127,8 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
           Be the Guessr
         </Btn>
         {guessrTaken && !teamFull && <p className="team-hint">Your team already has a guessr</p>}
-        <Btn className="btn-lg" variant="blue" disabled={!nameReady || teamFull} onClick={() => pickRole('mappr')}>
-          Be a Mappr
+        <Btn className="btn-lg" variant="blue" disabled={!nameReady || teamFull} onClick={() => pickRole('viewr')}>
+          Be a Viewr
         </Btn>
         {teamFull && <p className="join-error">Team {name} is full (max {cap} players)</p>}
         {oops && <p className="join-error">{oops}</p>}

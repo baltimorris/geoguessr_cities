@@ -65,9 +65,11 @@ export const maxDistForCity = city => (city === 'NYC' ? 130000 : 73000);
 // a real full-room game (20 teams) it's ~100 taps to reveal a single round
 // and the tooltips pile into an unreadable stack once guesses cluster. So
 // everyone outside the closest few drops in at once as one "the field"
-// step, then just the podium gets stepped one at a time for the suspense -
-// same shape as the final standings animation already uses.
-export const REVEAL_PODIUM_SIZE = 3;
+// step, then just the podium gets stepped one at a time for the suspense.
+// This only governs the per-location map reveal - the final scorecard's
+// medal styling and the game-winner countdown are their own fixed top 3,
+// independent of this.
+export const REVEAL_PODIUM_SIZE = 5;
 
 // How many reveal steps one location needs: 1 bulk step for the field (only
 // when there's actually a field beyond the podium) plus one step per podium

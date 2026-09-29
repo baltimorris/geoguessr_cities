@@ -5,7 +5,7 @@ import GameCodeEntry from './components/GameCodeEntry';
 import TeamSetup from './components/TeamSetup';
 import Lobby from './components/Lobby';
 import GuessrView from './components/GuessrView';
-import MapprView from './components/MapprView';
+import ViewrView from './components/ViewrView';
 import RoundReveal from './components/RoundReveal';
 import Results from './components/Results';
 import { motion } from 'framer-motion';
@@ -52,7 +52,7 @@ function App() {
   const [locations, setLocations] = useState([]);
   const [teamName, setTeamName] = useState('');
   const [team, setTeam] = useState(null); // { id, name, photo }
-  const [role, setRole] = useState(null); // 'guessr' | 'mappr'
+  const [role, setRole] = useState(null); // 'guessr' | 'viewr'
   const [player, setPlayer] = useState({ tag: '' }); // how you show up in the lobby
   const [localStarted, setLocalStarted] = useState(false); // covers no-supabase mode
   const [now, setNow] = useState(Date.now());
@@ -187,7 +187,7 @@ function App() {
   // Grab the round's locations once the game is going, but keep answer coordinates
   // away from the guessr while they're guessing (their client would otherwise hold
   // the exact answers). The guessr only needs the seq numbers for their chips.
-  // Mapprs get coordinates for the current round only, so they can't pre-read
+  // Viewrs get coordinates for the current round only, so they can't pre-read
   // future rounds' answers either.
   useEffect(() => {
     // wait for a role: before that they're on the team screen and need no locations,
@@ -197,7 +197,7 @@ function App() {
     const wantCoords = !(role === 'guessr' && guessing);
     const cols = wantCoords ? 'round,seq,lat,lng,heading' : 'round,seq';
     let q = supabase.from('locations').select(cols).eq('game_id', game.id);
-    if (role === 'mappr' && guessing) q = q.eq('round', currentRound);
+    if (role === 'viewr' && guessing) q = q.eq('round', currentRound);
     q.order('round').order('seq').then(({ data }) => setLocations(data || []));
   }, [game?.id, gameStarted, role, phase, gameOver, currentRound]);
 
@@ -205,7 +205,7 @@ function App() {
   useEffect(() => {
     if (!supabase || !adminGame?.id) return;
     supabase.from('locations')
-      .select('round,seq').eq('game_id', adminGame.id)
+      .select('round,seq,lat,lng').eq('game_id', adminGame.id)
       .then(({ data }) => setAdminLocations(data || []));
   }, [adminGame?.id, adminGame?.status, adminGame?.current_round]);
 
@@ -365,7 +365,7 @@ function App() {
     if (!supabase || !adminGame) return;
     await runAdminAction(
       { reveal_step: (adminGame.reveal_step || 0) + 1 },
-      "Couldn't advance the reveal, try again"
+      "Oops, can't go forward. Maybe try that again"
     );
   };
 
@@ -374,7 +374,7 @@ function App() {
     if (!supabase || !adminGame) return;
     await runAdminAction(
       { reveal_step: Math.max(0, (adminGame.reveal_step || 0) - 1) },
-      "Couldn't go back, try again"
+      "Couldn't go back, try again?"
     );
   };
 
@@ -386,13 +386,13 @@ function App() {
         round_started_at: new Date().toISOString(),
         reveal_step: 0,
       },
-      "Couldn't start the next round, try again"
+      "Couldn't start the next round, try again?"
     );
   };
 
   const finishGame = async () => {
     if (!supabase || !adminGame) return;
-    await runAdminAction({ status: 'finished' }, "Couldn't finish the game, try again");
+    await runAdminAction({ status: 'finished' }, "Couldn't finish the game, try again?");
   };
 
   // wipe the slate: finish the current game (which boots every player) and drop
@@ -440,9 +440,9 @@ function App() {
   } else if (role === 'guessr' && gameStarted) {
     screenKey = 'guessr';
     screen = <GuessrView game={game} team={team} roundLocations={roundLocations} deadline={deadline} now={now} />;
-  } else if (role === 'mappr' && gameStarted) {
-    screenKey = 'mappr';
-    screen = <MapprView roundLocations={roundLocations} isDC={isDC} currentRound={currentRound} />;
+  } else if (role === 'viewr' && gameStarted) {
+    screenKey = 'viewr';
+    screen = <ViewrView roundLocations={roundLocations} isDC={isDC} currentRound={currentRound} />;
   }
 
   return (
@@ -468,6 +468,7 @@ function App() {
               adminError = {adminError}
               adminRoundOver = {adminRoundOver}
               adminLocationCount = {adminLocations.length}
+              adminLocations = {adminLocations}
               adminTeamCount = {adminTeamCount}
               revealTotal = {revealTotal}
               revealLocationSteps = {revealLocationSteps}
@@ -479,7 +480,7 @@ function App() {
             the whole time so a stalled animation engine can never hide the game. */}
         <motion.div
           key={screenKey}
-          className={`screen ${['mappr', 'lobby'].includes(screenKey) ? 'screen-full' : ''}`}
+          className={`screen ${['viewr', 'lobby'].includes(screenKey) ? 'screen-full' : ''}`}
           initial={{ y: 12 }}
           animate={{ y: 0 }}
           transition={{ duration: 0.28, ease: 'easeOut' }}

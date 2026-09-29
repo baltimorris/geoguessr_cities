@@ -9,7 +9,7 @@ const drift = (range, n = 6) =>
 function Bubble({ role, label }) {
   const xPath = useMemo(() => drift(120), []);
   const yPath = useMemo(() => drift(140), []);
-  const roleEmoji = role === 'mappr' ? '\u{1F5FA}️' : '\u{1F4F7}';
+  const roleEmoji = role === 'viewr' ? '\u{1F5FA}️' : '\u{1F4F7}';
   return (
     <motion.div
       className="bubble"

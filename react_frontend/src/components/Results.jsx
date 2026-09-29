@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import Standings from './Standings';
+import PodiumSlot from './PodiumSlot';
 import { haversineFt, scoreWithHandicap, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
+// The persisted "game's over" screen everyone lands on once the runner
+// finishes it - same podium-on-top layout as the live final-round reveal
+// (RoundReveal.jsx), just already fully revealed, so there's no jarring
+// swap from "top 3 dramatically announced" to "oh, a totally different list".
 export default function Results({ game, locations }) {
-  const [rows, setRows] = useState(null);
+  const [standings, setStandings] = useState(null);
 
   useEffect(() => {
     if (!supabase || !game?.id) return;
@@ -17,7 +21,7 @@ export default function Results({ game, locations }) {
     (async () => {
       const { data: teams } = await supabase.from('teams')
         .select('id,name,size').eq('game_id', game.id);
-      if (!teams?.length) { setRows([]); return; }
+      if (!teams?.length) { setStandings([]); return; }
       const { data: guesses } = await supabase.from('guesses')
         .select('*').in('team_id', teams.map(t => t.id));
 
@@ -34,20 +38,46 @@ export default function Results({ game, locations }) {
           if (!g) continue;
           total += scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, size, handicap);
         }
-        return { name: t.name, score: total, size };
-      }).sort((a, b) => b.score - a.score);
-      setRows(scored);
+        return { name: t.name, total, size };
+      }).sort((a, b) => b.total - a.total);
+      setStandings(scored);
     })();
     // locations arrive async on a refresh; recompute when they land or scores read 0
   }, [game?.id, locations]);
 
-  if (!rows) return <p>Tallying scores...</p>;
+  if (!standings) return <p>Tallying scores...</p>;
+  if (standings.length === 0) {
+    return (
+      <div className="results">
+        <h2>Final scores</h2>
+        <p className="team-hint">Nobody guessed anything?</p>
+      </div>
+    );
+  }
+
+  const podium = standings.slice(0, 3);
+  const rest = standings.slice(3);
 
   return (
-    <div className="results">
+    <div className="results final-countdown">
       <h2>Final scores</h2>
-      {rows.length === 0 && <p className="team-hint">Nobody guessed anything?</p>}
-      <Standings rows={rows} renderScore={r => r.score.toLocaleString()} />
+      <div className="final-podium">
+        {podium[0] && <PodiumSlot rank={1} team={podium[0]} />}
+        {podium[1] && <PodiumSlot rank={2} team={podium[1]} />}
+        {podium[2] && <PodiumSlot rank={3} team={podium[2]} />}
+      </div>
+      {rest.length > 0 && (
+        <ol className="results-list final-countdown-rest">
+          {rest.map(r => (
+            <li key={r.name}>
+              <span className="results-team">
+                {r.name}{r.size > 2 && <span className="team-size-tag"> · {r.size} players</span>}
+              </span>
+              <span className="results-score">{r.total.toLocaleString()}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }

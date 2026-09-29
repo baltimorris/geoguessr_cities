@@ -30,7 +30,14 @@ export default function Standings({ rows, renderScore }) {
             {i < 3 ? `${MEDAL_EMOJI[i]} ` : ''}{r.name}
             {r.size > 2 && <span className="team-size-tag"> · {r.size} players</span>}
           </span>
-          <span className="results-score">{renderScore(r)}</span>
+          <span className="results-right">
+            {r.rankDelta != null && (
+              <span className={`rank-delta ${r.rankDelta > 0 ? 'up' : r.rankDelta < 0 ? 'down' : 'same'}`}>
+                {r.rankDelta > 0 ? `▲${r.rankDelta}` : r.rankDelta < 0 ? `▼${-r.rankDelta}` : '–'}
+              </span>
+            )}
+            <span className="results-score">{renderScore(r)}</span>
+          </span>
         </motion.li>
       ))}
     </ol>

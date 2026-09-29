@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import StreetView from './StreetView';
 
-export default function MapprView({ roundLocations, isDC, currentRound }) {
+export default function ViewrView({ roundLocations, isDC, currentRound }) {
   const [active, setActive] = useState(0);
 
   useEffect(() => { setActive(0); }, [currentRound]);
@@ -18,7 +18,7 @@ export default function MapprView({ roundLocations, isDC, currentRound }) {
   const current = roundLocations[Math.min(active, roundLocations.length - 1)];
 
   return (
-    <div className="mappr-view">
+    <div className="viewr-view">
       <div className="pano-stage">
         <StreetView isDC={isDC} location={current} />
       </div>

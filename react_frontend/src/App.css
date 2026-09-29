@@ -349,7 +349,7 @@ footer {
   white-space: nowrap;
 }
 
-/* Street view for mapprs */
+/* Street view for viewrs */
 .streetview-frame {
   position: relative;
   width: 100%;
@@ -492,8 +492,8 @@ footer {
   transition: opacity 0.3s linear;
 }
 
-/* Mappr street view */
-.mappr-view {
+/* Viewr street view */
+.viewr-view {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -517,14 +517,22 @@ footer {
   }
 }
 
+/* absolute+inset instead of width/height:100% - the fullscreen viewr screen
+   sizes .pano-stage via flex-grow with an explicit height:auto (see
+   .screen-full .pano-stage below), and a percentage height never resolves
+   against a flex-grown parent's *used* size, only an explicitly definite
+   one - same family of bug as the app-container seam fix, just the flexbox
+   flavor of it. Stretching to the nearest positioned ancestor's actual
+   laid-out box sidesteps that entirely, same trick .pano-canvas already
+   uses one level down. */
 .pano-stage .streetview-frame {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   max-width: none;
   border-radius: 0;
 }
 
-/* Fullscreen screens (mappr, lobby): fill everything below the header */
+/* Fullscreen screens (viewr, lobby): fill everything below the header */
 main:has(.screen-full) {
   padding: 0;
   align-items: stretch;
@@ -539,14 +547,14 @@ main:has(.screen-full) {
   flex-direction: column;
 }
 
-.screen-full .mappr-view,
+.screen-full .viewr-view,
 .screen-full .lobby {
   flex: 1;
   min-height: 0;
   gap: 0;
 }
 
-.screen-full .mappr-view {
+.screen-full .viewr-view {
   position: relative;
 }
 
@@ -697,6 +705,8 @@ main:has(.screen-full) {
   padding: 3px 11px;
   font-size: 0.8rem;
   font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
 }
@@ -716,6 +726,14 @@ main:has(.screen-full) {
   font-size: 0.68rem;
   padding: 2px 8px;
   opacity: 0.9;
+}
+
+/* a straggler that's had its turn once the podium starts stepping in - same
+   pill, just faded further and italicized to match the muted line it's
+   still attached to (the balloon itself is gone, this label is all that's left) */
+.reveal-tt-field-muted.leaflet-tooltip {
+  font-style: italic;
+  opacity: 0.55;
 }
 
 /* arrows for teams that fell off-screen on the closest zoom */
@@ -738,6 +756,8 @@ main:has(.screen-full) {
   color: var(--text);
   font-size: 0.72rem;
   font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
   padding: 2px 9px;
   border-radius: 999px;
   border: 2px solid #888; /* color set inline per team */
@@ -832,6 +852,31 @@ main:has(.screen-full) {
 
 .results-score {
   font-variant-numeric: tabular-nums;
+}
+
+.results-right {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* rank movement since the previous round - up/down and by how many spots */
+.rank-delta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-delta.up { color: #00B140; }
+.rank-delta.down { color: #bf0d3e; }
+.rank-delta.same { color: var(--muted); font-weight: 400; }
+
+.results-list li.gold .rank-delta.same,
+.results-list li.silver .rank-delta.same,
+.results-list li.bronze .rank-delta.same {
+  color: inherit;
+  opacity: 0.6;
 }
 
 .team-size-tag {

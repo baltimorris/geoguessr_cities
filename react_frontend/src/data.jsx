@@ -4,7 +4,7 @@ export const buttons = [
         action: {setState}
     },
     {
-        label: "I'm a Mappr",
+        label: "I'm a Viewr",
         action: {setState}
     }
 ];

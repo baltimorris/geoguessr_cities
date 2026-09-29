@@ -1,6 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import Btn from './Btn';
+import { supabase } from '../supabase';
+import { haversineFt, scoreWithHandicap, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 import './AdminRemote.css';
 
 // Drives the actual game once it exists. One primary button that IS whatever
@@ -8,7 +10,7 @@ import './AdminRemote.css';
 // of a wall of buttons you could tap in the wrong order or past the end of
 // the reveal - plus a back button for the one step it's safe to undo.
 export default function AdminRemote({
-  game, locationCount, teamCount = 0, generating, error, roundOver, revealTotal, revealLocationSteps,
+  game, locations = [], locationCount, teamCount = 0, generating, error, roundOver, revealTotal, revealLocationSteps,
   onClose, onSeedLocations, onStartGame, onEndRound,
   onRevealNext, onRevealBack, onNextRound, onFinishGame, onNewGame,
 }) {
@@ -30,6 +32,43 @@ export default function AdminRemote({
   const rounds = game.settings?.rounds ?? 3;
   const round = game.current_round || 1;
   const step = game.reveal_step || 0;
+
+  // Standings so the runner always has an answer for "who's winning" without
+  // digging into the reveal - round-only and cumulative, refetched whenever
+  // the game actually moves (new guesses land as the round/step progress).
+  const [scoreData, setScoreData] = useState(null);
+  useEffect(() => {
+    if (!supabase || !game?.id || game.status === 'lobby' || !locations.length) { setScoreData(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data: teams } = await supabase.from('teams').select('id,name,size').eq('game_id', game.id);
+      if (!teams?.length) { if (!cancelled) setScoreData({ round: [], game: [] }); return; }
+      const { data: guesses } = await supabase.from('guesses').select('*').in('team_id', teams.map(t => t.id));
+      if (cancelled) return;
+
+      const maxPoints = game.settings?.maxPoints || 5000;
+      const maxDist = maxDistForCity(game.city);
+      const handicap = game.settings?.handicap !== false;
+      const cap = game.settings?.maxTeamSize || Infinity;
+      const merged = mergeTeams(teams);
+      const sizeOf = t => Math.min(t.size, cap);
+
+      const scoreFor = locs => merged.map(t => {
+        let total = 0;
+        for (const loc of locs) {
+          const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
+          if (!g) continue;
+          total += scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, sizeOf(t), handicap);
+        }
+        return { name: t.name, total };
+      }).sort((a, b) => b.total - a.total);
+
+      const roundLocs = locations.filter(l => l.round === game.current_round);
+      const playedLocs = locations.filter(l => l.round <= (game.current_round || 1));
+      setScoreData({ round: scoreFor(roundLocs), game: scoreFor(playedLocs) });
+    })();
+    return () => { cancelled = true; };
+  }, [game?.id, game.status, game.current_round, game.reveal_step, locations]);
   const lastRound = round >= rounds;
   // revealTotal is still loading right after a round ends - don't block on it,
   // just don't claim the reveal is "done" until we actually know that
@@ -125,6 +164,35 @@ export default function AdminRemote({
           >
             &#9664; Back
           </Btn>
+        )}
+
+        {scoreData && (scoreData.round.length > 0 || scoreData.game.length > 0) && (
+          <div className="admin-remote-rankings">
+            <div className="admin-ranking-col">
+              <h3>Round {round}</h3>
+              <ol>
+                {scoreData.round.map((r, i) => (
+                  <li key={r.name}>
+                    <span className="admin-ranking-pos">{i + 1}</span>
+                    <span className="admin-ranking-name">{r.name}</span>
+                    <span className="admin-ranking-score">{r.total.toLocaleString()}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div className="admin-ranking-col">
+              <h3>Game</h3>
+              <ol>
+                {scoreData.game.map((r, i) => (
+                  <li key={r.name}>
+                    <span className="admin-ranking-pos">{i + 1}</span>
+                    <span className="admin-ranking-name">{r.name}</span>
+                    <span className="admin-ranking-score">{r.total.toLocaleString()}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
         )}
 
         {game.status !== 'finished' && (

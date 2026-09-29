@@ -66,8 +66,8 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
   if (!roundLocations.length) {
     return (
       <div className="empty-round">
-        <h2>No locations for round {round} yet</h2>
-        <p className="team-hint">The game runner still has to upload them</p>
+        <h2>No locations for round {round} yet.</h2>
+        <p className="team-hint">Jay still has to pull the lever and grab some locations!</p>
       </div>
     );
   }
