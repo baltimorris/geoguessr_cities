@@ -119,14 +119,6 @@ function App() {
     setLocalStarted(false);
   };
 
-  // Once a game is finished, let players see the final scores briefly, then boot
-  // them back to a clean code-entry screen so nobody lingers on a stale board.
-  useEffect(() => {
-    if (!role || game?.status !== 'finished') return;
-    const t = setTimeout(leaveGame, 30000);
-    return () => clearTimeout(t);
-  }, [role, game?.status]);
-
   // Until there's a backend, the joinable code is whatever admin set (or DEMO)
   const activeCode = gameSettings.code || 'DEMO';
 

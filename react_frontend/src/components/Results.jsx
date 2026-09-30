@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import QRCode from 'react-qr-code';
 import { supabase } from '../supabase';
 import PodiumSlot from './PodiumSlot';
 import { haversineFt, scoreWithHandicap, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
+
+const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScJJ1YFUFOIs0m035PpYzOIdJPMMy1mf80-lfhl1tJ5SbucFQ/viewform?usp=publish-editor';
 
 // The persisted "game's over" screen everyone lands on once the runner
 // finishes it - same podium-on-top layout as the live final-round reveal
@@ -46,14 +49,6 @@ export default function Results({ game, locations }) {
   }, [game?.id, locations]);
 
   if (!standings) return <p>Tallying scores...</p>;
-  if (standings.length === 0) {
-    return (
-      <div className="results">
-        <h2>Final scores</h2>
-        <p className="team-hint">Nobody guessed anything?</p>
-      </div>
-    );
-  }
 
   const podium = standings.slice(0, 3);
   const rest = standings.slice(3);
@@ -61,23 +56,39 @@ export default function Results({ game, locations }) {
   return (
     <div className="results final-countdown">
       <h2>Final scores</h2>
-      <div className="final-podium">
-        {podium[0] && <PodiumSlot rank={1} team={podium[0]} />}
-        {podium[1] && <PodiumSlot rank={2} team={podium[1]} />}
-        {podium[2] && <PodiumSlot rank={3} team={podium[2]} />}
-      </div>
-      {rest.length > 0 && (
-        <ol className="results-list final-countdown-rest">
-          {rest.map(r => (
-            <li key={r.name}>
-              <span className="results-team">
-                {r.name}{r.size > 2 && <span className="team-size-tag"> · {r.size} players</span>}
-              </span>
-              <span className="results-score">{r.total.toLocaleString()}</span>
-            </li>
-          ))}
-        </ol>
+      {standings.length === 0 ? (
+        <p className="team-hint">Nobody guessed anything?</p>
+      ) : (
+        <>
+          <div className="final-podium">
+            {podium[0] && <PodiumSlot rank={1} team={podium[0]} />}
+            {podium[1] && <PodiumSlot rank={2} team={podium[1]} />}
+            {podium[2] && <PodiumSlot rank={3} team={podium[2]} />}
+          </div>
+          {rest.length > 0 && (
+            <ol className="results-list final-countdown-rest">
+              {rest.map(r => (
+                <li key={r.name}>
+                  <span className="results-team">
+                    {r.name}{r.size > 2 && <span className="team-size-tag"> · {r.size} players</span>}
+                  </span>
+                  <span className="results-score">{r.total.toLocaleString()}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
       )}
+
+      {/* the game just stays here until the runner boots everyone - no more
+          auto-leave timer - so this is a good, unhurried moment to catch
+          people for feedback while they're all still standing around */}
+      <div className="feedback-qr">
+        <p className="team-hint">Got a sec? Scan for feedback</p>
+        <div className="feedback-qr-code">
+          <QRCode value={FEEDBACK_FORM_URL} size={160} />
+        </div>
+      </div>
     </div>
   );
 }

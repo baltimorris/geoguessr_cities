@@ -978,6 +978,25 @@ main:has(.screen-full) {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* feedback QR on the final scores screen - white card regardless of theme,
+   a QR needs real contrast and a quiet zone to scan reliably */
+.feedback-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--divider);
+}
+
+.feedback-qr-code {
+  background: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
+}
+
 /* escape hatch if someone else's session got restored on a shared phone */
 .leave-link {
   background: none;
