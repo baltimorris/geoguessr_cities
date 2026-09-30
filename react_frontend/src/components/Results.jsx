@@ -92,7 +92,7 @@ export default function Results({ game, locations }) {
         target="_blank"
         rel="noopener noreferrer"
       >
-        Let us know wha you think!!
+        Let us know what you think!!
       </a>
     </div>
   );
