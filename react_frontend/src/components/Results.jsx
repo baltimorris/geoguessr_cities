@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import QRCode from 'react-qr-code';
 import { supabase } from '../supabase';
 import PodiumSlot from './PodiumSlot';
 import { haversineFt, scoreWithHandicap, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
@@ -82,13 +81,19 @@ export default function Results({ game, locations }) {
 
       {/* the game just stays here until the runner boots everyone - no more
           auto-leave timer - so this is a good, unhurried moment to catch
-          people for feedback while they're all still standing around */}
-      <div className="feedback-qr">
-        <p className="team-hint">Got a sec? Scan for feedback</p>
-        <div className="feedback-qr-code">
-          <QRCode value={FEEDBACK_FORM_URL} size={160} />
-        </div>
-      </div>
+          people for feedback while they're all still standing around. a
+          floating link instead of a QR - they're already ON the phone this
+          is showing on, scanning it would mean a second device - and fixed
+          to the screen instead of sitting at the bottom of the standings
+          means it's still right there even with a long team list to scroll past */}
+      <a
+        className="feedback-float"
+        href={FEEDBACK_FORM_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Let us know wha you think!!
+      </a>
     </div>
   );
 }
