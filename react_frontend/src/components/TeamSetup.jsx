@@ -103,7 +103,7 @@ export default function TeamSetup({ game, teamName, setTeamName, onReady }) {
           maxLength={30}
           value={teamName}
           autoFocus
-          placeholder="Boshis"
+          placeholder="Metro Maniacs"
           onChange={e => setTeamName(e.target.value)}
         />
       </div>

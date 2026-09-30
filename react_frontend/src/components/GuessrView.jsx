@@ -63,6 +63,11 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
     setLocked(prev => ({ ...prev, [sel]: true }));
   };
 
+  // reopens the pin for editing - doesn't touch what's already saved, the
+  // next lock-in just adds a newer row and the scoring already takes
+  // whichever guess per team/round/location has the latest timestamp
+  const unlock = () => setLocked(prev => ({ ...prev, [sel]: false }));
+
   if (!roundLocations.length) {
     return (
       <div className="empty-round">
@@ -106,6 +111,9 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
       >
         {locked[sel] ? `Locked in ${sel}!` : saving ? 'Saving…' : `Lock in guess ${sel}`}
       </Btn>
+      {locked[sel] && !timeUp && (
+        <button className="leave-link" onClick={unlock}>Change this guess</button>
+      )}
     </div>
   );
 }
