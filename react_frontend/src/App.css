@@ -1113,3 +1113,59 @@ main:has(.screen-full) {
 .admin-map-stage .reveal-map {
   height: 75vh;
 }
+
+/* Homepage - localguessr.com itself, the first thing anyone sees before
+   ever hitting code entry. Text-heavy, so it reads like an article instead
+   of the app's usual tight centered forms. */
+.home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+  width: 100%;
+  max-width: 34rem;
+  text-align: left;
+}
+
+.home-hero {
+  text-align: center;
+}
+
+.home-title {
+  font-size: 2.4rem;
+  font-weight: 800;
+}
+
+.home-tagline {
+  color: var(--muted);
+  font-size: 1.05rem;
+  margin-top: 0.25rem;
+}
+
+.home-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  line-height: 1.5;
+}
+
+.home-section h2 {
+  font-size: 1.3rem;
+}
+
+.home-section a {
+  color: #009cde;
+}
+
+.home-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px dashed var(--divider);
+  text-align: center;
+}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import Header from './components/Header';
+import Home from './components/Home';
 import GameCodeEntry from './components/GameCodeEntry';
 import TeamSetup from './components/TeamSetup';
 import Lobby from './components/Lobby';
@@ -59,6 +60,7 @@ function App() {
   const [now, setNow] = useState(Date.now());
   const [restoring, setRestoring] = useState(true);
   const [projecting, setProjecting] = useState(false); // admin-only full takeover: the reveal, full width, for a projector
+  const [pastHome, setPastHome] = useState(false); // past the homepage, headed into code entry / an existing session
 
   // shared clock tick, everything time-based hangs off this
   useEffect(() => {
@@ -417,6 +419,9 @@ function App() {
   if (restoring) {
     screenKey = 'restoring';
     screen = <p className="team-hint">Reconnecting...</p>;
+  } else if (!pastHome && !game) {
+    screenKey = 'home';
+    screen = <Home onPlay={() => setPastHome(true)} />;
   } else if (game && !role) {
     screenKey = 'team';
     screen = <TeamSetup game={game} teamName={teamName} setTeamName={setTeamName}
