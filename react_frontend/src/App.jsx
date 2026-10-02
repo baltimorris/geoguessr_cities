@@ -469,7 +469,6 @@ function App() {
               adminError = {adminError}
               adminRoundOver = {adminRoundOver}
               adminLocationCount = {adminLocations.length}
-              adminLocations = {adminLocations}
               adminTeamCount = {adminTeamCount}
               revealTotal = {revealTotal}
               revealLocationSteps = {revealLocationSteps}

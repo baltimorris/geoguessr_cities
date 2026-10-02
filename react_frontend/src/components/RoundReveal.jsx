@@ -7,7 +7,7 @@ import ThemedTiles from './ThemedTiles';
 import { supabase } from '../supabase';
 import Standings from './Standings';
 import PodiumSlot from './PodiumSlot';
-import { haversineFt, scoreWithHandicap, distanceLabel, latestGuess, maxDistForCity, mergeTeams, REVEAL_PODIUM_SIZE } from '../scoring';
+import { distanceLabel, REVEAL_PODIUM_SIZE } from '../scoring';
 
 // line colors, farthest guess first
 const LINE_COLORS = ['#bf0d3e', '#ed8b00', '#009cde', '#00B140', '#8e44ad', '#919d9d'];
@@ -134,43 +134,46 @@ export default function RoundReveal({ game, locations, isDC, team }) {
     // rerun it once locations actually show up.
     if (!locations.length) return;
     (async () => {
+      // scoring itself (distance, handicap, points) lives in the db now -
+      // guess_scores and team_round_scores already have the math done, this
+      // just shapes what comes back for the map and the standings list
       const { data: teams } = await supabase.from('teams')
-        .select('id,name,size,emoji').eq('game_id', game.id);
+        .select('name,size').eq('game_id', game.id);
       if (!teams?.length) { setData({ byLoc: {}, standings: [] }); return; }
-      const { data: guesses } = await supabase.from('guesses')
-        .select('*').in('team_id', teams.map(t => t.id));
-
-      const maxPoints = game.settings?.maxPoints || 5000;
-      const maxDist = maxDistForCity(game.city);
-      const handicap = game.settings?.handicap !== false;
-      const cap = game.settings?.maxTeamSize || Infinity;
-      const merged = mergeTeams(teams);
-      const sizeOf = t => Math.min(t.size, cap);
+      const { data: scores } = await supabase.from('guess_scores')
+        .select('team_name,team_emoji,scored_team_size,round,location_seq,guess_lat,guess_lng,distance_ft,points')
+        .eq('game_id', game.id).eq('is_latest', true);
+      const { data: roundRows } = await supabase.from('team_round_scores')
+        .select('team_name,round,round_points,running_total')
+        .eq('game_id', game.id).lte('round', round);
 
       const byLoc = {};
       for (const loc of roundLocations) {
-        byLoc[loc.seq] = merged
-          .map(t => {
-            const g = latestGuess(guesses || [], t.ids, round, loc.seq);
-            if (!g) return null;
-            const dist = haversineFt(loc.lat, loc.lng, g.lat, g.lng);
-            return { team: t.name, emoji: t.emoji, lat: g.lat, lng: g.lng, dist, score: scoreWithHandicap(dist, maxPoints, maxDist, sizeOf(t), handicap) };
-          })
-          .filter(Boolean)
+        byLoc[loc.seq] = (scores || [])
+          .filter(s => s.round === round && s.location_seq === loc.seq)
+          .map(s => ({ team: s.team_name, emoji: s.team_emoji, lat: s.guess_lat, lng: s.guess_lng, dist: s.distance_ft, score: s.points }))
           .sort((a, b) => b.dist - a.dist);
       }
 
-      const playedLocs = locations.filter(l => l.round <= round);
-      const standings = merged.map(t => {
-        let total = 0, roundScore = 0;
-        for (const loc of playedLocs) {
-          const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
-          if (!g) continue;
-          const s = scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, sizeOf(t), handicap);
-          total += s;
-          if (loc.round === round) roundScore += s;
-        }
-        return { name: t.name, roundScore, total, size: sizeOf(t) };
+      // team_round_scores has one row per round a team actually played -
+      // collapse to the latest one each team has (<=round, from the query
+      // above) for their running total, same as "standings after round N"
+      const latestRowByTeam = new Map();
+      for (const r of roundRows || []) {
+        const prev = latestRowByTeam.get(r.team_name);
+        if (!prev || r.round > prev.round) latestRowByTeam.set(r.team_name, r);
+      }
+      const sizeByTeam = new Map((scores || []).map(s => [s.team_name, s.scored_team_size]));
+      // every team shows up even at 0 - a team with no guesses yet has no
+      // row in team_round_scores at all, but still belongs on the board
+      const standings = teams.map(t => {
+        const r = latestRowByTeam.get(t.name);
+        return {
+          name: t.name,
+          roundScore: r && r.round === round ? r.round_points : 0,
+          total: r ? r.running_total : 0,
+          size: sizeByTeam.get(t.name) || t.size || 1,
+        };
       }).sort((a, b) => b.total - a.total);
 
       // rank movement vs. where the team stood after the previous round, so
@@ -178,15 +181,9 @@ export default function RoundReveal({ game, locations, isDC, team }) {
       // static list - no prior round on round 1, so no deltas there.
       let prevRank = null;
       if (round > 1) {
-        const priorLocs = locations.filter(l => l.round < round);
-        const priorStandings = merged.map(t => {
-          let total = 0;
-          for (const loc of priorLocs) {
-            const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
-            if (!g) continue;
-            total += scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, sizeOf(t), handicap);
-          }
-          return { name: t.name, total };
+        const priorStandings = teams.map(t => {
+          const priorTotal = (roundRows || []).find(x => x.team_name === t.name && x.round === round - 1)?.running_total ?? 0;
+          return { name: t.name, total: priorTotal };
         }).sort((a, b) => b.total - a.total);
         prevRank = {};
         priorStandings.forEach((t, i) => { prevRank[t.name] = i + 1; });

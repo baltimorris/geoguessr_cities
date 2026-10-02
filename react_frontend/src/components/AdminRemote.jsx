@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import Btn from './Btn';
 import { supabase } from '../supabase';
-import { haversineFt, scoreWithHandicap, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 import './AdminRemote.css';
 
 // Drives the actual game once it exists. One primary button that IS whatever
@@ -10,7 +9,7 @@ import './AdminRemote.css';
 // of a wall of buttons you could tap in the wrong order or past the end of
 // the reveal - plus a back button for the one step it's safe to undo.
 export default function AdminRemote({
-  game, locations = [], locationCount, teamCount = 0, generating, error, roundOver, revealTotal, revealLocationSteps,
+  game, locationCount, teamCount = 0, generating, error, roundOver, revealTotal, revealLocationSteps,
   onClose, onSeedLocations, onStartGame, onEndRound,
   onRevealNext, onRevealBack, onNextRound, onFinishGame, onNewGame, onOpenProjector,
 }) {
@@ -38,37 +37,37 @@ export default function AdminRemote({
   // the game actually moves (new guesses land as the round/step progress).
   const [scoreData, setScoreData] = useState(null);
   useEffect(() => {
-    if (!supabase || !game?.id || game.status === 'lobby' || !locations.length) { setScoreData(null); return; }
+    if (!supabase || !game?.id || game.status === 'lobby') { setScoreData(null); return; }
     let cancelled = false;
     (async () => {
-      const { data: teams } = await supabase.from('teams').select('id,name,size').eq('game_id', game.id);
-      if (!teams?.length) { if (!cancelled) setScoreData({ round: [], game: [] }); return; }
-      const { data: guesses } = await supabase.from('guesses').select('*').in('team_id', teams.map(t => t.id));
+      // the db already has every round tallied (team_round_scores) - no
+      // need to touch raw guesses or locations here at all anymore
+      const { data: rows } = await supabase.from('team_round_scores')
+        .select('team_name,round,round_points,running_total')
+        .eq('game_id', game.id).lte('round', game.current_round || 1);
       if (cancelled) return;
+      if (!rows?.length) { setScoreData({ round: [], game: [] }); return; }
 
-      const maxPoints = game.settings?.maxPoints || 5000;
-      const maxDist = maxDistForCity(game.city);
-      const handicap = game.settings?.handicap !== false;
-      const cap = game.settings?.maxTeamSize || Infinity;
-      const merged = mergeTeams(teams);
-      const sizeOf = t => Math.min(t.size, cap);
+      const round = game.current_round || 1;
+      const roundRows = rows.filter(r => r.round === round)
+        .map(r => ({ name: r.team_name, total: r.round_points }))
+        .sort((a, b) => b.total - a.total);
 
-      const scoreFor = locs => merged.map(t => {
-        let total = 0;
-        for (const loc of locs) {
-          const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
-          if (!g) continue;
-          total += scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, sizeOf(t), handicap);
-        }
-        return { name: t.name, total };
-      }).sort((a, b) => b.total - a.total);
+      // one row per team: whichever round is latest (<=current) is their
+      // running total so far
+      const latestByTeam = new Map();
+      for (const r of rows) {
+        const prev = latestByTeam.get(r.team_name);
+        if (!prev || r.round > prev.round) latestByTeam.set(r.team_name, r);
+      }
+      const gameRows = [...latestByTeam.values()]
+        .map(r => ({ name: r.team_name, total: r.running_total }))
+        .sort((a, b) => b.total - a.total);
 
-      const roundLocs = locations.filter(l => l.round === game.current_round);
-      const playedLocs = locations.filter(l => l.round <= (game.current_round || 1));
-      setScoreData({ round: scoreFor(roundLocs), game: scoreFor(playedLocs) });
+      setScoreData({ round: roundRows, game: gameRows });
     })();
     return () => { cancelled = true; };
-  }, [game?.id, game.status, game.current_round, game.reveal_step, locations]);
+  }, [game?.id, game.status, game.current_round, game.reveal_step]);
   const lastRound = round >= rounds;
   // revealTotal is still loading right after a round ends - don't block on it,
   // just don't claim the reveal is "done" until we actually know that

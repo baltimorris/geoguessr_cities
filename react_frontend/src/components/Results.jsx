@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Btn from './Btn';
 import { supabase } from '../supabase';
 import PodiumSlot from './PodiumSlot';
-import { haversineFt, scoreWithHandicap, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
 
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScJJ1YFUFOIs0m035PpYzOIdJPMMy1mf80-lfhl1tJ5SbucFQ/viewform?usp=publish-editor';
 
@@ -22,27 +21,23 @@ export default function Results({ game, locations, onLeaveGame }) {
     // reruns this once it shows up.
     if (!locations.length) return;
     (async () => {
+      // scoring lives in the db now - team_total_scores already has every
+      // team's final tally, this just fills in anyone who scored nothing
       const { data: teams } = await supabase.from('teams')
-        .select('id,name,size').eq('game_id', game.id);
+        .select('name,size').eq('game_id', game.id);
       if (!teams?.length) { setStandings([]); return; }
-      const { data: guesses } = await supabase.from('guesses')
-        .select('*').in('team_id', teams.map(t => t.id));
+      const { data: totals } = await supabase.from('team_total_scores')
+        .select('team_name,total_points').eq('game_id', game.id);
+      const { data: scores } = await supabase.from('guess_scores')
+        .select('team_name,scored_team_size').eq('game_id', game.id).eq('is_latest', true);
 
-      const maxPoints = game.settings?.maxPoints || 5000;
-      const maxDist = maxDistForCity(game.city);
-      const handicap = game.settings?.handicap !== false;
-      const cap = game.settings?.maxTeamSize || Infinity;
-
-      const scored = mergeTeams(teams).map(t => {
-        const size = Math.min(t.size, cap);
-        let total = 0;
-        for (const loc of locations) {
-          const g = latestGuess(guesses || [], t.ids, loc.round, loc.seq);
-          if (!g) continue;
-          total += scoreWithHandicap(haversineFt(loc.lat, loc.lng, g.lat, g.lng), maxPoints, maxDist, size, handicap);
-        }
-        return { name: t.name, total, size };
-      }).sort((a, b) => b.total - a.total);
+      const totalByTeam = new Map((totals || []).map(t => [t.team_name, t.total_points]));
+      const sizeByTeam = new Map((scores || []).map(s => [s.team_name, s.scored_team_size]));
+      const scored = teams.map(t => ({
+        name: t.name,
+        total: totalByTeam.get(t.name) || 0,
+        size: sizeByTeam.get(t.name) || t.size || 1,
+      })).sort((a, b) => b.total - a.total);
       setStandings(scored);
     })();
     // locations arrive async on a refresh; recompute when they land or scores read 0
