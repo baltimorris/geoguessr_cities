@@ -21,6 +21,16 @@ const answerIcon = L.divIcon({
   iconAnchor: [13, 13],
 });
 
+// just a team's emoji, no pill, no name - a big room means a dozen-plus of
+// these on screen at once, and giving every one of them a full name+score
+// label was the thing making it unreadable on a phone
+const emojiIcon = emoji => L.divIcon({
+  className: 'reveal-emoji-icon',
+  html: emoji || '❓',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
+
 // Camera only moves when its points change, i.e. when the admin steps.
 // On the closest reveal it dives in tight even if the rest fall off-screen.
 function CameraDriver({ points, tight }) {
@@ -125,7 +135,7 @@ export default function RoundReveal({ game, locations, isDC, team }) {
     if (!locations.length) return;
     (async () => {
       const { data: teams } = await supabase.from('teams')
-        .select('id,name,size').eq('game_id', game.id);
+        .select('id,name,size,emoji').eq('game_id', game.id);
       if (!teams?.length) { setData({ byLoc: {}, standings: [] }); return; }
       const { data: guesses } = await supabase.from('guesses')
         .select('*').in('team_id', teams.map(t => t.id));
@@ -144,7 +154,7 @@ export default function RoundReveal({ game, locations, isDC, team }) {
             const g = latestGuess(guesses || [], t.ids, round, loc.seq);
             if (!g) return null;
             const dist = haversineFt(loc.lat, loc.lng, g.lat, g.lng);
-            return { team: t.name, lat: g.lat, lng: g.lng, dist, score: scoreWithHandicap(dist, maxPoints, maxDist, sizeOf(t), handicap) };
+            return { team: t.name, emoji: t.emoji, lat: g.lat, lng: g.lng, dist, score: scoreWithHandicap(dist, maxPoints, maxDist, sizeOf(t), handicap) };
           })
           .filter(Boolean)
           .sort((a, b) => b.dist - a.dist);
@@ -289,24 +299,29 @@ export default function RoundReveal({ game, locations, isDC, team }) {
 
   const isOwnTeam = g => !!team?.name && g.team.trim().toLowerCase() === team.name.trim().toLowerCase();
 
-  // Three states per field dot: not yet appeared (still popping in during the
-  // bulk step - stays fully hidden), appeared+prominent (podium, or the
-  // viewer's own team - full balloon), or appeared+muted (a straggler that's
-  // had its turn once we move on to stepping the podium - line and label
-  // stay so they can still see where they landed, just the balloon goes away).
+  // Two states per field dot: not yet appeared (still popping in during the
+  // bulk step - stays fully hidden), or appeared. Podium spots and the
+  // viewer's own team get the full balloon+label; every other field member
+  // that's appeared is muted down to just their emoji, full stop - not only
+  // once we reach the podium steps. A 17-team round means a dozen-plus of
+  // these, and giving every one of them a name+score pill (even just while
+  // popping in) was the thing making a big room unreadable on a phone.
   const dotAppeared = revealed.map((g, i) => {
     if (i >= bulkCount) return true; // podium always shown
     return bulk ? i < bulkVisible : true; // field's bulk step has already run its course
   });
   const dotMuted = revealed.map((g, i) => {
-    if (i >= bulkCount) return false; // podium is never muted
-    if (bulk) return false; // still popping in, not muted - just not appeared yet if false above
+    if (i >= bulkCount) return false; // podium always gets the full treatment
     return !isOwnTeam(g);
   });
-  const shownPoints = revealed.filter((_, i) => dotAppeared[i] && !dotMuted[i]);
+  // camera still needs to frame muted teams too - "muted" only changes how
+  // they're drawn (emoji instead of a full balloon), not whether they're on
+  // the map at all, so leaving them out of the fit left a tight zoom on
+  // just the answer pin with a dozen emoji scattered off-screen
+  const shownPoints = revealed.filter((_, i) => dotAppeared[i]);
 
   // tight on answer+closest for the finale, otherwise frame whatever's
-  // actually on screen (not the hidden stragglers)
+  // actually appeared (not the ones still waiting their turn to pop in)
   const cameraPoints = isClosest
     ? [[loc.lat, loc.lng], [revealed[revealed.length - 1].lat, revealed[revealed.length - 1].lng]]
     : [[loc.lat, loc.lng], ...shownPoints.map(g => [g.lat, g.lng])];
@@ -348,30 +363,40 @@ export default function RoundReveal({ game, locations, isDC, team }) {
             </Tooltip>
           </Marker>
           {revealed.map((g, i) => {
-            // the bulk group: muted dots with a placement+name+score label
-            // centered above, popping in one at a time as bulkVisible ramps
-            // up - then fading to just the viewer's own team (if any) once
-            // we move on to stepping through the podium
+            // the bulk group: everyone except the viewer's own team is just
+            // their emoji, no balloon, no label - popping in one at a time
+            // as bulkVisible ramps up. own team still gets the full dot +
+            // name + score pill so they can always find themselves.
             if (i < bulkCount) {
               if (!dotAppeared[i]) return null;
-              const muted = dotMuted[i];
+              if (dotMuted[i]) {
+                return (
+                  <React.Fragment key={g.team}>
+                    <Marker position={[g.lat, g.lng]} icon={emojiIcon(g.emoji)} />
+                    <Polyline
+                      positions={[[loc.lat, loc.lng], [g.lat, g.lng]]}
+                      pathOptions={{ color: FIELD_COLOR, weight: 1.5, opacity: 0.35, className: 'reveal-line' }}
+                    />
+                  </React.Fragment>
+                );
+              }
               const fieldRank = cur.length - i; // farthest-first, closest gets rank 1
               return (
                 <React.Fragment key={g.team}>
                   <CircleMarker
                     center={[g.lat, g.lng]}
-                    radius={muted ? 0 : 5}
-                    pathOptions={{ color: '#fff', weight: muted ? 0 : 1, fillColor: FIELD_COLOR, fillOpacity: muted ? 0 : 0.85, className: `reveal-dot reveal-dot-field${muted ? ' reveal-dot-muted' : ''}` }}
+                    radius={5}
+                    pathOptions={{ color: '#fff', weight: 1, fillColor: FIELD_COLOR, fillOpacity: 0.85, className: 'reveal-dot reveal-dot-field' }}
                   >
                     {inView(g.lat, g.lng) && (
-                      <Tooltip permanent direction="top" offset={[0, -8]} className={`reveal-tt reveal-tt-field${muted ? ' reveal-tt-field-muted' : ''}`}>
+                      <Tooltip permanent direction="top" offset={[0, -8]} className="reveal-tt reveal-tt-field">
                         <b>{fieldRank}.</b> {g.team}<br />{g.score.toLocaleString()} pts
                       </Tooltip>
                     )}
                   </CircleMarker>
                   <Polyline
                     positions={[[loc.lat, loc.lng], [g.lat, g.lng]]}
-                    pathOptions={{ color: FIELD_COLOR, weight: 1.5, opacity: muted ? 0.35 : 0.5, className: 'reveal-line' }}
+                    pathOptions={{ color: FIELD_COLOR, weight: 1.5, opacity: 0.5, className: 'reveal-line' }}
                   />
                 </React.Fragment>
               );

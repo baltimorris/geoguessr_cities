@@ -14,6 +14,7 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
   const [picks, setPicks] = useState({});
   const [locked, setLocked] = useState({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   // fresh round, fresh everything - then pull back any guesses already saved
   // for it, so a refresh mid-round (phone locks, tab reloads) doesn't make it
@@ -22,6 +23,7 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
     setSel(1);
     setPicks({});
     setLocked({});
+    setSaveError('');
     if (!supabase || !team?.id) return;
     let cancelled = false;
     supabase.from('guesses').select('location,lat,lng,created_at')
@@ -49,9 +51,14 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
   const lockIn = async () => {
     const pick = picks[sel];
     if (!pick || timeUp) return;
+    setSaveError('');
     if (supabase && team?.id) {
       setSaving(true);
-      await supabase.from('guesses').insert({
+      // bar wifi drops inserts silently if you don't check this - this used to
+      // just assume it worked and mark the guess locked either way, so a team
+      // could "lock in" a guess that never actually made it to the db and never
+      // know until the reveal came up short for a location they sworn they'd guessed
+      const { error } = await supabase.from('guesses').insert({
         team_id: team.id,
         round,
         location: sel,
@@ -59,6 +66,7 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
         lng: pick.lng,
       });
       setSaving(false);
+      if (error) { setSaveError("Didn't save - check your connection and try again"); return; }
     }
     setLocked(prev => ({ ...prev, [sel]: true }));
   };
@@ -91,7 +99,7 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
           <button
             key={l.seq}
             className={`chip ${sel === l.seq ? 'active' : ''} ${locked[l.seq] ? 'locked' : picks[l.seq] ? 'picked' : ''}`}
-            onClick={() => setSel(l.seq)}
+            onClick={() => { setSel(l.seq); setSaveError(''); }}
           >
             {locked[l.seq] ? '✓ ' : ''}{l.seq}
           </button>
@@ -111,6 +119,7 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
       >
         {locked[sel] ? `Locked in ${sel}!` : saving ? 'Saving…' : `Lock in guess ${sel}`}
       </Btn>
+      {saveError && <p className="join-error">{saveError}</p>}
       {locked[sel] && !timeUp && (
         <button className="leave-link" onClick={unlock}>Change this guess</button>
       )}

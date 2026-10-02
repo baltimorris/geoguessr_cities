@@ -39,8 +39,9 @@ export const mergeTeams = (teams) => {
       const m = byKey.get(key);
       m.ids.push(t.id);
       m.size = Math.max(m.size, size);
+      if (!m.emoji && t.emoji) m.emoji = t.emoji;
     } else {
-      byKey.set(key, { name: t.name, ids: [t.id], size });
+      byKey.set(key, { name: t.name, ids: [t.id], size, emoji: t.emoji });
     }
   }
   return [...byKey.values()];

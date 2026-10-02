@@ -105,13 +105,21 @@ const draftPoint = bucket => {
   return randomInRing(bucket.ring);
 };
 
-// Snap to a real outdoor panorama, same job 03_metadata.R does
+// Snap to a real outdoor panorama, same job 03_metadata.R does. `source:
+// OUTDOOR` alone isn't enough - a user-submitted photo sphere taken inside a
+// building (a shop, a metro station mezzanine, a museum) can still get
+// tagged outdoor and slip through, and those are exactly the ones that come
+// up unguessable. Official Google-car coverage doesn't have that problem, so
+// only keep panos whose copyright line is Google's own, not a contributor's.
+const isOfficialGoogleCoverage = copyright => /google/i.test(copyright || '');
+
 const nearestPano = (svc, google, point) =>
   new Promise(resolve => {
     svc.getPanorama(
       { location: point, radius: 60, source: google.maps.StreetViewSource.OUTDOOR },
       (data, status) => {
-        if (status === google.maps.StreetViewStatus.OK && data?.location?.latLng) {
+        if (status === google.maps.StreetViewStatus.OK && data?.location?.latLng
+          && isOfficialGoogleCoverage(data.copyright)) {
           resolve({ lat: data.location.latLng.lat(), lng: data.location.latLng.lng() });
         } else {
           resolve(null);

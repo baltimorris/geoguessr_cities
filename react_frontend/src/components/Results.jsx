@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Btn from './Btn';
 import { supabase } from '../supabase';
 import PodiumSlot from './PodiumSlot';
 import { haversineFt, scoreWithHandicap, latestGuess, maxDistForCity, mergeTeams } from '../scoring';
@@ -9,7 +10,7 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScJJ1YFUFOIs
 // finishes it - same podium-on-top layout as the live final-round reveal
 // (RoundReveal.jsx), just already fully revealed, so there's no jarring
 // swap from "top 3 dramatically announced" to "oh, a totally different list".
-export default function Results({ game, locations }) {
+export default function Results({ game, locations, onLeaveGame }) {
   const [standings, setStandings] = useState(null);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function Results({ game, locations }) {
   const rest = standings.slice(3);
 
   return (
-    <div className="results final-countdown">
+    <div className="results final-countdown results-page">
       <h2>Final scores</h2>
       {standings.length === 0 ? (
         <p className="team-hint">Nobody guessed anything?</p>
@@ -79,13 +80,20 @@ export default function Results({ game, locations }) {
         </>
       )}
 
-      {/* the game just stays here until the runner boots everyone - no more
-          auto-leave timer - so this is a good, unhurried moment to catch
-          people for feedback while they're all still standing around. a
-          floating link instead of a QR - they're already ON the phone this
-          is showing on, scanning it would mean a second device - and fixed
-          to the screen instead of sitting at the bottom of the standings
-          means it's still right there even with a long team list to scroll past */}
+      {/* no more auto-leave timer - nothing boots you off this screen on its
+          own, including once the runner starts a fresh game, so there needs
+          to be an obvious way off it instead of just the small "not you?"
+          up in the header that nobody reads as "leave" */}
+      {onLeaveGame && (
+        <Btn variant="outline" onClick={onLeaveGame}>Done, back to code entry</Btn>
+      )}
+
+      {/* a good, unhurried moment to catch people for feedback while
+          they're all still standing around. a floating link instead of a
+          QR - they're already ON the phone this is showing on, scanning it
+          would mean a second device - and fixed to the screen instead of
+          sitting at the bottom of the standings means it's still right
+          there even with a long team list to scroll past */}
       <a
         className="feedback-float"
         href={FEEDBACK_FORM_URL}

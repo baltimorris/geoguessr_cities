@@ -8,6 +8,7 @@ import GuessrView from './components/GuessrView';
 import ViewrView from './components/ViewrView';
 import RoundReveal from './components/RoundReveal';
 import Results from './components/Results';
+import AdminMapView from './components/AdminMapView';
 import { motion } from 'framer-motion';
 import { supabase } from './supabase';
 import { generateLocations } from './generateLocations';
@@ -57,6 +58,7 @@ function App() {
   const [localStarted, setLocalStarted] = useState(false); // covers no-supabase mode
   const [now, setNow] = useState(Date.now());
   const [restoring, setRestoring] = useState(true);
+  const [projecting, setProjecting] = useState(false); // admin-only full takeover: the reveal, full width, for a projector
 
   // shared clock tick, everything time-based hangs off this
   useEffect(() => {
@@ -402,6 +404,13 @@ function App() {
     localStorage.removeItem(ADMIN_GAME_KEY);
   };
 
+  // admin-only full takeover: the reveal, full width, for a projector or TV -
+  // bypasses the header/settings tree entirely, same as the admin-takeover
+  // warning screen does
+  if (projecting) {
+    return <AdminMapView onClose={() => setProjecting(false)} defaultCode={adminGame?.code || ''} />;
+  }
+
   // one screen at a time, keyed so framer-motion can cross-fade between them
   let screenKey = 'code';
   let screen = <GameCodeEntry activeCode={activeCode} onJoin={joinGame} />;
@@ -417,7 +426,7 @@ function App() {
     screen = <Lobby role={role} team={team} player={player} setPlayer={setPlayer} game={game} />;
   } else if (role && gameOver) {
     screenKey = 'results';
-    screen = <Results game={game} locations={locations} />;
+    screen = <Results game={game} locations={locations} onLeaveGame={leaveGame} />;
   } else if (role && gameStarted && phase === 'roundover') {
     screenKey = 'roundover';
     screen = (
@@ -466,7 +475,8 @@ function App() {
               revealLocationSteps = {revealLocationSteps}
               team = {team}
               role = {role}
-              onLeaveGame = {leaveGame} />
+              onLeaveGame = {leaveGame}
+              onOpenProjector = {() => setProjecting(true)} />
       <main>
         {/* keyed so it re-mounts and slides in on each screen change. opacity stays 1
             the whole time so a stalled animation engine can never hide the game. */}

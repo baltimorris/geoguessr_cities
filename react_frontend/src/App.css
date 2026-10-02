@@ -728,12 +728,14 @@ main:has(.screen-full) {
   opacity: 0.9;
 }
 
-/* a straggler that's had its turn once the podium starts stepping in - same
-   pill, just faded further and italicized to match the muted line it's
-   still attached to (the balloon itself is gone, this label is all that's left) */
-.reveal-tt-field-muted.leaflet-tooltip {
-  font-style: italic;
-  opacity: 0.55;
+/* everyone in the field who isn't the viewer's own team - just the emoji,
+   no pill. centered on its point, a soft drop-shadow so it reads against
+   tiles of any color. */
+.reveal-emoji-icon {
+  font-size: 1.15rem;
+  line-height: 22px;
+  text-align: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
 
 /* arrows for teams that fell off-screen on the closest zoom */
@@ -978,6 +980,14 @@ main:has(.screen-full) {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* reserves real space below the standings/button for the fixed feedback
+   pill below - without this, a short team list (or a tall phone) lands
+   "Done, back to code entry" right underneath the floater, which sits on
+   top of it and silently eats the tap instead of the button underneath */
+.results-page {
+  padding-bottom: 5.5rem;
+}
+
 /* feedback link on the final scores screen - fixed to the viewport so it
    stays put regardless of scroll position, which matters once a big room's
    worth of teams pushes the standings list well past one screen. bright
@@ -1028,4 +1038,78 @@ main:has(.screen-full) {
   text-decoration: underline;
   cursor: pointer;
   padding: 0;
+}
+
+/* Admin projector view - a full takeover outside the normal header/main
+   tree, same min-height trick as .app-container so it doesn't depend on
+   any ancestor's own height to fill the screen. */
+.admin-map-view {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  background-color: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-map-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--divider);
+}
+
+.admin-map-code {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.admin-map-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.admin-map-connect {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.admin-map-waiting {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.admin-map-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 1.5rem;
+}
+
+.admin-map-stage .reveal {
+  flex: 1;
+  min-height: 0;
+}
+
+/* a big screen can afford a much bigger map than a phone can */
+.admin-map-stage .reveal-map {
+  height: 75vh;
 }
