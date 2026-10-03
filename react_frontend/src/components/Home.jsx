@@ -22,34 +22,19 @@ export default function Home({ onPlay }) {
     <div className="home">
       <div className="home-hero">
         <h1 className="home-title">LocalGuessr</h1>
-        <p className="home-tagline">GeoGuessr, but it's your own backyard</p>
+        <p className="home-tagline">Test test test</p>
       </div>
 
       <div className="home-section">
         <p>
-          If you've ever played <a href="https://www.geoguessr.com" target="_blank" rel="noopener noreferrer">GeoGuessr</a>,
-          you've probably gotten frustrated by how hard it is to memorize every telephone pole and street
-          sign style in the world just to play well.
-        </p>
-        <p>
-          Enter <strong>LocalGuessr</strong> - a spin on the game that keeps things close to home. Just
-          like GeoGuessr, your team gets dropped into a random spot via Street View, but every location is
-          in <em>your</em> city. It's just your own urban jungle now, and the knowledge you already have is
-          all you need.
+          Bababooey Bababooey Bababooey
         </p>
       </div>
 
       <div className="home-section">
         <h2>How it works</h2>
         <p>
-          Plays like bar trivia - teams compete to guess where each location actually is, in person,
-          together. Grab a team, pick a name, and one of you is the <strong>Guessr</strong> (drops the
-          pins on the map) while everyone else can be a <strong>Viewr</strong> and explore the live
-          street view together on their own phones.
-        </p>
-        <p>
-          A typical game is 3 rounds of 5 locations, 15 minutes a round. After each round the room sees
-          exactly where everyone landed and how the scores shook out, before the next round kicks off.
+          Babbaboeey
         </p>
       </div>
 
@@ -57,7 +42,7 @@ export default function Home({ onPlay }) {
         <h2>Ready to play?</h2>
         {liveGame === null && <p className="team-hint">Checking for a live game…</p>}
         {liveGame === false && (
-          <p className="team-hint">No game running right now - check Instagram or the newsletter for the next one.</p>
+          <p className="team-hint">No game running right now</p>
         )}
         {liveGame === true && (
           <Btn className="btn-lg" onClick={onPlay}>Play now!</Btn>
