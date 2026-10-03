@@ -1,3 +1,9 @@
+// generateLocations.js - picks the random Street View spots for a game. It
+// samples points inside the city's weighted areas (data/regions.json), asks
+// Google for the nearest official outdoor panorama, and keeps only spots that
+// are inside the city and spread out from each other. Used by the admin's
+// "Generate locations" button and by "Swap" in the location review screen.
+
 import { loadMaps } from './components/StreetView';
 import regions from './data/regions.json';
 

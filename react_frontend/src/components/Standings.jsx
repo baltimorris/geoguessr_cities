@@ -1,3 +1,6 @@
+// Standings.jsx - an animated ranked list of teams (medals for the top 3, rank
+// movement arrows). Used on the between-rounds standings screen.
+
 import React from 'react';
 import { motion } from 'framer-motion';
 

@@ -1,3 +1,7 @@
+// Home.jsx - the public homepage (what localguessr.com shows first): what the
+// game is, contact links, and a "Play now!" button that only appears when a
+// game is actually live (a lobby or active game exists).
+
 import React, { useState, useEffect } from 'react';
 import Btn from './Btn';
 import { supabase } from '../supabase';

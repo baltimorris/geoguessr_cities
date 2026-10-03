@@ -1,3 +1,9 @@
+// RoundReveal.jsx - the reveal after each round: for each location the answer
+// and every team's guess drop onto a map one step at a time, driven by the
+// admin's reveal_step, followed by the round standings (or the final-round
+// podium). Players see it on their phones; AdminMapView shows it on the
+// projector. Distances and points come from the database, not computed here.
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapContainer, Marker, CircleMarker, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
@@ -25,9 +31,14 @@ const answerIcon = L.divIcon({
 // just a team's emoji, no pill, no name - a big room means a dozen-plus of
 // these on screen at once, and giving every one of them a full name+score
 // label was the thing making it unreadable on a phone
+//
+// divIcon takes raw HTML, and a team's emoji is text any client can write to
+// the db - so it gets escaped here (and the db rejects markup characters too)
+// rather than trusted to be an emoji.
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const emojiIcon = emoji => L.divIcon({
   className: 'reveal-emoji-icon',
-  html: emoji || '❓',
+  html: escapeHtml(emoji || '❓'),
   iconSize: [22, 22],
   iconAnchor: [11, 11],
 });
@@ -353,6 +364,7 @@ export default function RoundReveal({ game, locations, isDC, team }) {
         <h2 className="reveal-heading-title">{roundLabel(round)} Reveal</h2>
         <p className="reveal-heading-location"><em>Location {loc.seq}</em></p>
       </div>
+      <div className="reveal-layout">
       <div className="map-container reveal-map">
         <MapContainer
           center={isDC ? [38.9072, -77.0369] : [40.7128, -74.0060]}
@@ -433,9 +445,14 @@ export default function RoundReveal({ game, locations, isDC, team }) {
           })}
         </MapContainer>
         <EdgeArrows map={map} points={edgePoints} />
-        {/* so everyone (and the runner) remembers what the spot actually looked like */}
-        <StreetThumb key={`${round}-${loc.seq}`} className="reveal-thumb" lat={loc.lat} lng={loc.lng} heading={loc.heading}
+      </div>
+      {/* so everyone (and the runner) remembers what the spot actually looked like -
+          beside/below the map, not on it, so it never covers a pin or a label */}
+      <figure className="reveal-photo">
+        <StreetThumb key={`${round}-${loc.seq}`} lat={loc.lat} lng={loc.lng} heading={loc.heading}
                      isDC={isDC} label={`${roundLabel(round)} · Location ${loc.seq}`} />
+        <figcaption>Location {loc.seq} · tap to look around</figcaption>
+      </figure>
       </div>
       <p className="team-hint">The game runner is walking through the reveal</p>
     </div>

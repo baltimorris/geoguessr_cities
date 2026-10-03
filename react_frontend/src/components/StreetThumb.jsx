@@ -1,3 +1,6 @@
+// StreetThumb.jsx - a small Street View picture of one location (used on the
+// reveal and in the admin review). Tap it to open a full look-around.
+
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import StreetView, { loadMaps } from './StreetView';
@@ -8,8 +11,20 @@ import StreetView, { loadMaps } from './StreetView';
 // pointer events blocked, which reads as a picture. It only builds once it
 // scrolls into view, so a long QC list isn't 15 panos loading at once.
 // Tap it to open the full, pannable view in an overlay.
+//
+// If the Street View Static API is switched on for the key, set
+// VITE_STREETVIEW_STATIC=1 and this renders a plain image instead (half the
+// per-load price of a live panorama, and nothing heavy for a phone to boot).
+// It falls back to the panorama on its own if the image request is refused.
+const USE_STATIC = import.meta.env.VITE_STREETVIEW_STATIC === '1';
+
 export default function StreetThumb({ lat, lng, heading, isDC = true, label, className = '' }) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const [staticFailed, setStaticFailed] = useState(false);
+  const showStatic = USE_STATIC && !staticFailed && !!apiKey;
+  // same starting view the viewr gets (heading 210 when none is stored)
+  const staticUrl = `https://maps.googleapis.com/maps/api/streetview?size=480x300&location=${lat},${lng}`
+    + `&heading=${heading ?? 210}&pitch=0&fov=90&source=outdoor&key=${apiKey}`;
   const wrapRef = useRef(null);
   const panoRef = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -25,7 +40,7 @@ export default function StreetThumb({ lat, lng, heading, isDC = true, label, cla
   }, []);
 
   useEffect(() => {
-    if (!visible || !apiKey) return;
+    if (!visible || !apiKey || showStatic) return;
     let cancelled = false;
     loadMaps(apiKey).then(google => {
       if (cancelled || !panoRef.current) return;
@@ -48,12 +63,15 @@ export default function StreetThumb({ lat, lng, heading, isDC = true, label, cla
       setTimeout(kick, 400);
     });
     return () => { cancelled = true; };
-  }, [visible, apiKey, lat, lng, heading]);
+  }, [visible, apiKey, showStatic, lat, lng, heading]);
 
   return (
     <>
       <div ref={wrapRef} className={`street-thumb ${className}`}>
-        <div className="street-thumb-pano" ref={panoRef} />
+        {showStatic
+          ? visible && <img className="street-thumb-img" src={staticUrl} alt={label || 'Street view of this spot'}
+                            onError={() => setStaticFailed(true)} />
+          : <div className="street-thumb-pano" ref={panoRef} />}
         {!apiKey && <span className="team-hint">no street view key</span>}
         <button
           type="button"

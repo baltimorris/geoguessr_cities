@@ -1,3 +1,6 @@
+// MapView.jsx - the guessr's guess map: tap anywhere to drop a pin. Centered on
+// DC or NYC; pure Leaflet map, no game logic.
+
 import { MapContainer, Marker, useMapEvents } from 'react-leaflet';
 import { useState } from 'react';
 import 'leaflet/dist/leaflet.css';
@@ -11,8 +14,11 @@ export default function MapView({ isDC = true, onPick, position }) {
   function ClickHandler() {
     useMapEvents({
       click(e) {
-        setInternal(e.latlng);
-        if (onPick) onPick(e.latlng);
+        // dragging the map around the world can make lng run past +-180;
+        // wrap() folds it back into the real range the db accepts
+        const picked = e.latlng.wrap();
+        setInternal(picked);
+        if (onPick) onPick(picked);
       },
     });
     return null;

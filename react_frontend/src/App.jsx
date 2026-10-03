@@ -1,3 +1,11 @@
+// App.jsx - the brain of the app. It holds the shared game state (which game
+// you're in, your team, your role, the clock, the admin's game) and decides
+// which single screen to show: homepage -> code entry -> team setup -> lobby
+// -> guessing/viewing -> reveal -> final results. It also owns every
+// admin action (create game, start, end round, reveal next, finish) and keeps
+// phones in sync by following the `games` row over Supabase realtime.
+// Each screen itself is its own file in components/.
+
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import Header from './components/Header';
@@ -359,7 +367,8 @@ function App() {
       });
       if (!spots.length) throw new Error('no street view spots came back');
       const { data: saved, error } = await supabase.from('locations')
-        .insert(spots.map(({ area, ...s }) => ({ ...s, game_id: adminGame.id })))
+        // `area` (which weighted bucket a spot came from) is only for the generator's logging, not a column
+        .insert(spots.map(s => ({ round: s.round, seq: s.seq, lat: s.lat, lng: s.lng, game_id: adminGame.id })))
         .select('id,round,seq,lat,lng,heading');
       if (error) throw error;
       setAdminLocations(prev => [...prev, ...(saved || [])]);

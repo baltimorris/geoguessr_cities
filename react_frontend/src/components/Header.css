@@ -1,3 +1,6 @@
+/* Header.css - the striped header bar and the settings pane/admin setup form
+   that slides out of it. */
+
 /* Header styles */
 .header {
   display: flex;
@@ -12,15 +15,6 @@
   z-index: 10;
   flex-shrink: 0; /* tall pages were squashing it to nothing */
   min-height: 8rem; /* 15vh alone clips the logo on short screens */
-}
-
-/* Header animation states */
-.header.expanded {
-  height: 10000vh;
-}
-
-.header.collapsed {
-  height: 100vh;
 }
 
 /* Container for header text and DC. Stacks the title over the team line
@@ -289,10 +283,4 @@
 .YL { background-color: #FFD100; width: 16.66%; }
 .GR { background-color: #00B140; width: 16.66%; }
 .SV { background-color: #919d9d; width: 16.66%; }
-.white-bar {
-  background-color: white;
-  width: 2px;
-  align-self: flex-start;
-  margin-left: 15px;
-}
 

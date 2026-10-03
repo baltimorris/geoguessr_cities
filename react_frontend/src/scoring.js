@@ -1,3 +1,8 @@
+// scoring.js - small pacing/presentation helpers shared by the reveal, results
+// and admin screens: distance labels, merging duplicate-cased teams, how many
+// reveal steps a location needs, and the practice-round constants. Note the
+// actual score MATH is not here - it lives in the database (see README.md).
+
 // scoring (distance, handicap, points) lives in the db now - see the
 // haversine_ft/score_guess/size_handicap/score_with_handicap functions and
 // the guess_scores/team_round_scores/team_total_scores views. what's left

@@ -1,3 +1,7 @@
+// StreetView.jsx - the viewr's interactive Street View (loads the Google Maps
+// JS API once). Panning is free; everything that would give the location away
+// (address, road labels, click-to-move, free zoom) is turned off.
+
 import React, { useEffect, useRef, useState } from 'react';
 
 // Load the Maps JS API once and share the promise

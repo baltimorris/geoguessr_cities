@@ -1,3 +1,6 @@
+// PodiumSlot.jsx - one podium spot (1st/2nd/3rd) on the final scores: shows
+// "???" until the admin reveals it, then pops the team in.
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 

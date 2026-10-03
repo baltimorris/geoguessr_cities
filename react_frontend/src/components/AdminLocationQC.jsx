@@ -1,3 +1,8 @@
+// AdminLocationQC.jsx - the admin's "Review locations" screen, shown from the
+// lobby remote before a game starts. A map of every spot plus a Street View
+// still of each, warnings for suspicious ones, and a Swap button to replace
+// a bad spot. Full-screen takeover, admin only.
+
 import React, { useMemo, useState } from 'react';
 import { MapContainer, Marker, Polygon } from 'react-leaflet';
 import L from 'leaflet';
@@ -78,8 +83,8 @@ export default function AdminLocationQC({ game, locations, setLocations, onClose
         <h2>Review locations</h2>
         <p className={flaggedCount ? 'pw-error' : 'team-hint'}>
           {real.length} spots · {flaggedCount
-            ? `${flaggedCount} flagged - check the red ones`
-            : 'nothing flagged. still glance at the pictures for indoor spots'}
+            ? `${flaggedCount} might have issues, make sure they're valid!`
+            : 'No issues found, but it doesn\'t hurt to manually check.'}
         </p>
 
         <div className="qc-map">

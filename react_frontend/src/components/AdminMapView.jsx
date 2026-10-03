@@ -1,3 +1,7 @@
+// AdminMapView.jsx - the projector screen. The admin types a game code and gets
+// the round reveal full-width (for a TV/projector) without joining as a team.
+// It mirrors whatever reveal step the admin is on from their own phone.
+
 import React, { useState, useEffect } from 'react';
 import Btn from './Btn';
 import RoundReveal from './RoundReveal';

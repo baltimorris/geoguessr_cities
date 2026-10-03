@@ -1,3 +1,7 @@
+// main.jsx - the entry point. index.html loads this file; it sets up the
+// Leaflet map marker images (a known bundler quirk) and mounts <App /> into
+// the #root div. Nothing else lives here.
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

@@ -1,3 +1,6 @@
+// GameCodeEntry.jsx - the "Enter game code" screen. Looks up the 4-character
+// code in the games table (ignoring finished games) and hands the game to App.
+
 import React, { useState } from 'react';
 import Btn from './Btn';
 import { supabase } from '../supabase';

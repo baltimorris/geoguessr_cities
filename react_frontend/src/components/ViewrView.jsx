@@ -1,3 +1,7 @@
+// ViewrView.jsx - the viewr's screen during a round: full-screen Street View of
+// the current location with chips to switch between the round's locations.
+// The viewr describes what they see; the guessr (who has the map) pins it.
+
 import React, { useState, useEffect } from 'react';
 import StreetView from './StreetView';
 import { roundLabel } from '../scoring';

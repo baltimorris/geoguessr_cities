@@ -1,3 +1,5 @@
+/* AdminRemote.css - styles for the admin remote-control overlay (AdminRemote.jsx). */
+
 /* Centered "remote control" for a game that already exists - separate from
    the sliding settings-pane used for pre-game setup, and from the header's
    own animated height, since this floats over the whole viewport instead. */

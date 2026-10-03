@@ -1,3 +1,6 @@
+// ThemedTiles.jsx - the map's background tiles, switching between a light and
+// dark style to match the phone's theme.
+
 import { TileLayer } from 'react-leaflet';
 import { useEffect, useState } from 'react';
 

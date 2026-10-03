@@ -1,3 +1,5 @@
+// practiceLocations.js - the hard-coded spots for the practice round (round 0).
+
 // The practice round is the same few spots every game, per city - famous
 // enough that a first-timer can get a feel for the street view + pin drop
 // without the pressure of a real round, and the same ones every time so the

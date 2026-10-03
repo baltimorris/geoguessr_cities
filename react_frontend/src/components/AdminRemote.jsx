@@ -1,3 +1,8 @@
+// AdminRemote.jsx - the admin's "remote control" overlay for a running game.
+// One big primary button that is always whatever should happen next (start,
+// end round, reveal next, next round, finish), plus live round/game rankings
+// and links to the projector and location review.
+
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import Btn from './Btn';

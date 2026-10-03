@@ -1,3 +1,7 @@
+// Lobby.jsx - the waiting room before a game starts. Shows floating bubbles for
+// everyone currently here (via Supabase realtime presence) and keeps your
+// team's player count up to date for the handicap.
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabase';

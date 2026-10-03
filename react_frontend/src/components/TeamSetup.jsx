@@ -1,3 +1,7 @@
+// TeamSetup.jsx - after entering a code: choose a team name + emoji and pick
+// your role (Guessr or Viewr). Creates the team row, or joins an existing team
+// of the same name; only one Guessr per team.
+
 import React, { useState, useEffect } from 'react';
 import Btn from './Btn';
 import { supabase } from '../supabase';

@@ -1,3 +1,8 @@
+/* App.css - almost all of the app's styling: the light/dark theme variables at
+   the top, then buttons, then each screen in roughly the order a player sees
+   them (code entry, team setup, lobby, guessing, reveal, results, homepage),
+   then the admin screens (projector, location review). */
+
 /* Light/dark palette, follows the system setting. Header stays dark in both (brand). */
 :root {
   --bg: #f0f0f0;
@@ -162,12 +167,6 @@ footer {
   background-color: #f0f0f0;
 }
 
-/* Styling for the read docs footer */
-.read-the-docs {
-  font-size: 0.875rem;
-  color: #888;
-}
-
 /* Animation for DC text */
 @keyframes slideFadeIn {
   0% {
@@ -178,12 +177,6 @@ footer {
     opacity: 1;
     transform: translate(0, 0);
   }
-}
-
-.coordinates-display {
-  margin-top: 1rem;
-  font-size: 1.2rem;
-  color: #333;
 }
 
 /* Game code entry on the home page */
@@ -1117,8 +1110,9 @@ main:has(.screen-full) {
 }
 
 /* a big screen can afford a much bigger map than a phone can */
-.admin-map-stage .reveal-map {
-  height: 75vh;
+@media (min-width: 900px) {
+  .admin-map-stage .reveal-layout .reveal-map { height: 75vh; }
+  .admin-map-stage .reveal-photo { width: 340px; }
 }
 
 /* Homepage - localguessr.com itself, the first thing anyone sees before
@@ -1187,6 +1181,7 @@ main:has(.screen-full) {
   background: #333;
 }
 .street-thumb-pano { position: absolute; inset: 0; pointer-events: none; }
+.street-thumb-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .street-thumb-hit {
   position: absolute;
   inset: 0;
@@ -1223,15 +1218,30 @@ main:has(.screen-full) {
 .thumb-modal-pano { position: relative; height: 70vh; }
 .thumb-modal-pano .streetview-frame { position: absolute; inset: 0; max-width: none; border-radius: 0; }
 
-/* reveal: a picture of the spot that was just answered, bottom-left of the map */
-.reveal-thumb {
-  position: absolute;
-  left: 10px;
-  bottom: 10px;
-  width: clamp(130px, 28%, 260px);
-  z-index: 450;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-  border: 2px solid #fff;
+/* reveal: map plus a picture of the spot that was just answered. stacked on
+   a phone (a shorter map to make room), side by side on a wide screen */
+.reveal-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+.reveal-layout .reveal-map { height: 46vh; margin-top: 0; }
+.reveal-photo {
+  width: min(70%, 300px);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+@media (min-width: 900px) {
+  .reveal-layout { flex-direction: row; align-items: flex-start; justify-content: flex-start; gap: 1rem; }
+  .reveal-layout .reveal-map { flex: 1; min-width: 0; height: 60vh; }
+  .reveal-photo { width: 300px; flex-shrink: 0; }
 }
 
 /* Admin location QC */
@@ -1296,3 +1306,23 @@ main:has(.screen-full) {
 .qc-card-row { display: flex; justify-content: space-between; align-items: center; }
 .qc-card-row .btn { padding: 0.35rem 0.8rem; font-size: 0.85rem; }
 .qc-flag-text { color: #bf0d3e; font-size: 0.8rem; font-weight: 600; margin: 0; }
+
+/* On/off switch (components/Toggle.jsx) */
+.toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.toggle-track { position: absolute; inset: 0; border-radius: 999px; background: var(--track); transition: background 0.15s; }
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s;
+}
+.toggle input:checked + .toggle-track { background: #009cde; }
+.toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+.toggle input:focus-visible + .toggle-track { outline: 2px solid #009cde; outline-offset: 2px; }

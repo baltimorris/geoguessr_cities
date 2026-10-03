@@ -1,3 +1,7 @@
+// locationQC.js - the checks behind the admin's location review screen: flags
+// spots that landed outside the city (e.g. VA/MD near a Metro stop) or sit too
+// close to another spot, and provides the city outline for the review map.
+
 import regions from './data/regions.json';
 import { isInsideCity, metersBetween } from './generateLocations';
 

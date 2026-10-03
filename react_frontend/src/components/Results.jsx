@@ -1,3 +1,7 @@
+// Results.jsx - the final scores screen everyone lands on when the game is
+// finished: podium, the rest of the standings, a feedback link and a button
+// to leave the game. Reads the totals from the database's team_total_scores.
+
 import React, { useState, useEffect } from 'react';
 import Btn from './Btn';
 import { supabase } from '../supabase';

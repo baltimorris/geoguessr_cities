@@ -1,3 +1,8 @@
+// GuessrView.jsx - the guessr's screen during a round: countdown timer, one
+// chip per location, a tap-to-drop-a-pin map, and "Lock in guess". A guess is
+// saved to the db the moment it's locked; the db decides whether it's still
+// allowed (right round, not over). The guessr never receives the answers.
+
 import React, { useState, useEffect } from 'react';
 import Btn from './Btn';
 import MapView from './MapView';
@@ -67,7 +72,13 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
         lng: pick.lng,
       });
       setSaving(false);
-      if (error) { setSaveError("Didn't save - check your connection and try again"); return; }
+      if (error) {
+        // the db refuses guesses outside the live round (see guard_guess_insert)
+        setSaveError(error.message?.startsWith('guess rejected')
+          ? "Time's up - that guess didn't count"
+          : "Didn't save - check your connection and try again");
+        return;
+      }
     }
     setLocked(prev => ({ ...prev, [sel]: true }));
   };
