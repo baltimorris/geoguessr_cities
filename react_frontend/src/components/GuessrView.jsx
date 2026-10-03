@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Btn from './Btn';
 import MapView from './MapView';
 import { supabase } from '../supabase';
+import { PRACTICE_ROUND, roundLabel, roundMinutesFor } from '../scoring';
 
 const mmss = ms => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -9,7 +10,7 @@ const mmss = ms => {
 };
 
 export default function GuessrView({ game, team, roundLocations, deadline, now }) {
-  const round = game?.current_round || 1;
+  const round = game?.current_round ?? 1;
   const [sel, setSel] = useState(1);
   const [picks, setPicks] = useState({});
   const [locked, setLocked] = useState({});
@@ -44,7 +45,7 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
   }, [round, team?.id]);
 
   const isDC = (game?.city || 'DC') === 'DC';
-  const totalMs = (game?.settings?.roundMinutes ?? 15) * 60000;
+  const totalMs = roundMinutesFor(game?.settings, round) * 60000;
   const remaining = deadline ? Math.max(0, deadline - now) : null;
   const timeUp = remaining === 0;
 
@@ -79,7 +80,7 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
   if (!roundLocations.length) {
     return (
       <div className="empty-round">
-        <h2>No locations for round {round} yet.</h2>
+        <h2>No locations for {roundLabel(round).toLowerCase()} yet.</h2>
         <p className="team-hint">Jay still has to pull the lever and grab some locations!</p>
       </div>
     );
@@ -88,12 +89,15 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
   return (
     <div className="guessr-view">
       {remaining !== null && (
-        <div className={`timer-bar ${remaining < 60000 ? 'urgent' : ''}`}>
+        <div className={`timer-bar ${remaining < 60000 ? 'urgent' : ''} ${remaining < totalMs / 2 ? 'low' : ''}`}>
           <div className="timer-fill" style={{ width: `${(remaining / totalMs) * 100}%` }} />
           <span className="timer-text">{mmss(remaining)}</span>
         </div>
       )}
-      <p className="round-progress">Round {round}</p>
+      <p className="round-progress">{roundLabel(round)}</p>
+      {round === PRACTICE_ROUND && (
+        <p className="team-hint">Just a warm-up, none of this counts. Get a feel for the street view and the map.</p>
+      )}
       <div className="location-chips">
         {roundLocations.map(l => (
           <button

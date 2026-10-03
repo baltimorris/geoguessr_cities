@@ -7,7 +7,8 @@ import ThemedTiles from './ThemedTiles';
 import { supabase } from '../supabase';
 import Standings from './Standings';
 import PodiumSlot from './PodiumSlot';
-import { distanceLabel, REVEAL_PODIUM_SIZE } from '../scoring';
+import StreetThumb from './StreetThumb';
+import { distanceLabel, REVEAL_PODIUM_SIZE, PRACTICE_ROUND, roundLabel } from '../scoring';
 
 // line colors, farthest guess first
 const LINE_COLORS = ['#bf0d3e', '#ed8b00', '#009cde', '#00B140', '#8e44ad', '#919d9d'];
@@ -113,7 +114,7 @@ function DrumButton() {
 }
 
 export default function RoundReveal({ game, locations, isDC, team }) {
-  const round = game?.current_round || 1;
+  const round = game?.current_round ?? 1; // 0 = practice
   const totalRounds = game?.settings?.rounds ?? 3;
   const step = game?.reveal_step || 0; // admin-driven, shared over realtime
   const [data, setData] = useState(null);
@@ -241,6 +242,15 @@ export default function RoundReveal({ game, locations, isDC, team }) {
   if (!frame) {
     const isFinalRound = round >= totalRounds;
 
+    if (round === PRACTICE_ROUND) {
+      return (
+        <div className="results">
+          <h2>That's the practice round</h2>
+          <p className="team-hint">None of that counted. Round 1 is the real thing, starting soon</p>
+        </div>
+      );
+    }
+
     if (!isFinalRound) {
       return (
         <div className="results">
@@ -340,7 +350,7 @@ export default function RoundReveal({ game, locations, isDC, team }) {
   return (
     <div className="reveal">
       <div className="reveal-heading">
-        <h2 className="reveal-heading-title">Round {round} Reveal</h2>
+        <h2 className="reveal-heading-title">{roundLabel(round)} Reveal</h2>
         <p className="reveal-heading-location"><em>Location {loc.seq}</em></p>
       </div>
       <div className="map-container reveal-map">
@@ -423,6 +433,9 @@ export default function RoundReveal({ game, locations, isDC, team }) {
           })}
         </MapContainer>
         <EdgeArrows map={map} points={edgePoints} />
+        {/* so everyone (and the runner) remembers what the spot actually looked like */}
+        <StreetThumb key={`${round}-${loc.seq}`} className="reveal-thumb" lat={loc.lat} lng={loc.lng} heading={loc.heading}
+                     isDC={isDC} label={`${roundLabel(round)} · Location ${loc.seq}`} />
       </div>
       <p className="team-hint">The game runner is walking through the reveal</p>
     </div>

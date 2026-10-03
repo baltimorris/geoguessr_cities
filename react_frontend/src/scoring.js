@@ -41,3 +41,13 @@ export const revealFrameCount = (n) => {
   if (n <= REVEAL_PODIUM_SIZE) return Math.max(1, n);
   return 1 + REVEAL_PODIUM_SIZE;
 };
+
+// Round 0 is the practice round: same hard coded spots every game, scored in
+// guess_scores so the reveal can show points, but left out of the db's
+// round/total views so it never counts toward anyone's real score.
+export const PRACTICE_ROUND = 0;
+export const roundLabel = round => (round === PRACTICE_ROUND ? 'Practice round' : `Round ${round}`);
+
+// the practice round runs on its own, shorter clock
+export const roundMinutesFor = (settings, round) =>
+  round === PRACTICE_ROUND ? (settings?.practiceMinutes ?? 4) : (settings?.roundMinutes ?? 15);

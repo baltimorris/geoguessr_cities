@@ -10,10 +10,13 @@ import ViewrView from './components/ViewrView';
 import RoundReveal from './components/RoundReveal';
 import Results from './components/Results';
 import AdminMapView from './components/AdminMapView';
+import AdminLocationQC from './components/AdminLocationQC';
 import { motion } from 'framer-motion';
 import { supabase } from './supabase';
 import { generateLocations } from './generateLocations';
-import { mergeTeams, revealFrameCount } from './scoring';
+import { mergeTeams, revealFrameCount, PRACTICE_ROUND, roundMinutesFor } from './scoring';
+import { PRACTICE_LOCATIONS } from './practiceLocations';
+import { flagLocations } from './locationQC';
 
 // Defaults lifted from 00_parameters.R
 const defaultGameSettings = {
@@ -24,6 +27,8 @@ const defaultGameSettings = {
   roundMinutes: 15,
   maxTeamSize: 5,
   handicap: true, // scale scores down for bigger teams
+  practice: true, // a warm-up round on the same hard coded spots before round 1
+  practiceMinutes: 4,
   dc: { at_large: 50, downtown: 15, greater_central: 25, metro: 10, metro_distance: 150 },
   nyc: { manhattan: 43, brooklyn: 32, queens: 12, bronx: 3, subway: 10, subway_distance: 100 },
 };
@@ -59,6 +64,7 @@ function App() {
   const [localStarted, setLocalStarted] = useState(false); // covers no-supabase mode
   const [now, setNow] = useState(Date.now());
   const [restoring, setRestoring] = useState(true);
+  const [qcOpen, setQcOpen] = useState(false); // admin-only: reviewing the game's spots before players see them
   const [projecting, setProjecting] = useState(false); // admin-only full takeover: the reveal, full width, for a projector
   const [pastHome, setPastHome] = useState(false); // past the homepage, headed into code entry / an existing session
 
@@ -131,8 +137,9 @@ function App() {
 
   const gameStarted = localStarted || game?.status === 'active' || game?.status === 'finished';
   const gameOver = game?.status === 'finished';
-  const currentRound = game?.current_round || 1;
-  const roundMinutes = game?.settings?.roundMinutes ?? 15;
+  // ?? not ||: round 0 is the practice round and is falsy
+  const currentRound = game?.current_round ?? 1;
+  const roundMinutes = roundMinutesFor(game?.settings, currentRound);
 
   // The deadline lives in the db (round_started_at), so every phone agrees on it
   const deadline = game?.round_started_at
@@ -201,7 +208,7 @@ function App() {
   useEffect(() => {
     if (!supabase || !adminGame?.id) return;
     supabase.from('locations')
-      .select('round,seq,lat,lng').eq('game_id', adminGame.id)
+      .select('id,round,seq,lat,lng,heading').eq('game_id', adminGame.id)
       .then(({ data }) => setAdminLocations(data || []));
   }, [adminGame?.id, adminGame?.status, adminGame?.current_round]);
 
@@ -224,9 +231,15 @@ function App() {
 
   const roundLocations = locations.filter(l => l.round === currentRound);
 
+  // the practice round's spots are always there, so "are the game's locations loaded" has to look past them
+  const realLocationCount = adminLocations.filter(l => l.round >= 1).length;
+  const flaggedCount = adminGame
+    ? [...flagLocations(adminLocations, adminGame.city || 'DC').values()].filter(f => f.length).length
+    : 0;
+
   // the runner's own clock for the game they created, so the panel can show reveal controls
   const adminDeadline = adminGame?.round_started_at
-    ? new Date(adminGame.round_started_at).getTime() + (adminGame.settings?.roundMinutes ?? 15) * 60000
+    ? new Date(adminGame.round_started_at).getTime() + roundMinutesFor(adminGame.settings, adminGame.current_round ?? 1) * 60000
     : null;
   const adminRoundOver = adminGame?.status === 'active' && adminDeadline !== null && now >= adminDeadline;
 
@@ -285,8 +298,19 @@ function App() {
         : "Couldn't create the game, try again");
       return;
     }
+    // the practice round's spots are the same every game, so they go in
+    // right away - everything else about the round just works off them
+    let practiceRows = [];
+    if (gameSettings.practice !== false) {
+      const spots = (PRACTICE_LOCATIONS[data.city] || []).map(s => ({ ...s, round: PRACTICE_ROUND, game_id: data.id }));
+      const { data: made, error: practiceErr } = spots.length
+        ? await supabase.from('locations').insert(spots).select('id,round,seq,lat,lng,heading')
+        : { data: [], error: null };
+      if (practiceErr) setAdminError("Game's up, but the practice round didn't save - it'll start at round 1");
+      practiceRows = made || [];
+    }
     setAdminGame(data);
-    setAdminLocations([]);
+    setAdminLocations(practiceRows);
     setGameSettings({ ...gameSettings, code: data.code });
     localStorage.setItem(ADMIN_GAME_KEY, data.id);
   };
@@ -305,7 +329,12 @@ function App() {
   const startGame = async () => {
     if (supabase && adminGame) {
       await runAdminAction(
-        { status: 'active', current_round: 1, round_started_at: new Date().toISOString() },
+        {
+          status: 'active',
+          // practice first when the game has spots for it
+          current_round: adminLocations.some(l => l.round === PRACTICE_ROUND) ? PRACTICE_ROUND : 1,
+          round_started_at: new Date().toISOString(),
+        },
         "Couldn't start the game, try again"
       );
     }
@@ -329,10 +358,11 @@ function App() {
         settings: adminGame.settings ?? gameSettings,
       });
       if (!spots.length) throw new Error('no street view spots came back');
-      const { error } = await supabase.from('locations')
-        .insert(spots.map(({ area, ...s }) => ({ ...s, game_id: adminGame.id })));
+      const { data: saved, error } = await supabase.from('locations')
+        .insert(spots.map(({ area, ...s }) => ({ ...s, game_id: adminGame.id })))
+        .select('id,round,seq,lat,lng,heading');
       if (error) throw error;
-      setAdminLocations(spots);
+      setAdminLocations(prev => [...prev, ...(saved || [])]);
       // a bucket with sparse Street View coverage can quietly come up short
       // instead of failing outright, so say so rather than leave a round thin
       const expected = rounds * perRound;
@@ -349,7 +379,7 @@ function App() {
   // which trips the same "Round over" -> reveal path the timer uses
   const endRound = async () => {
     if (!supabase || !adminGame) return;
-    const mins = adminGame.settings?.roundMinutes ?? 15;
+    const mins = roundMinutesFor(adminGame.settings, adminGame.current_round ?? 1);
     await runAdminAction(
       { round_started_at: new Date(Date.now() - mins * 60000).toISOString(), reveal_step: 0 },
       "Couldn't end the round, try again"
@@ -378,7 +408,7 @@ function App() {
     if (!supabase || !adminGame) return;
     await runAdminAction(
       {
-        current_round: (adminGame.current_round || 1) + 1,
+        current_round: (adminGame.current_round ?? 1) + 1,
         round_started_at: new Date().toISOString(),
         reveal_step: 0,
       },
@@ -411,6 +441,12 @@ function App() {
   // warning screen does
   if (projecting) {
     return <AdminMapView onClose={() => setProjecting(false)} defaultCode={adminGame?.code || ''} />;
+  }
+
+  // admin-only: look over the game's spots before anyone sees them
+  if (qcOpen && adminGame) {
+    return <AdminLocationQC game={adminGame} locations={adminLocations} setLocations={setAdminLocations}
+                            onClose={() => setQcOpen(false)} />;
   }
 
   // one screen at a time, keyed so framer-motion can cross-fade between them
@@ -473,7 +509,9 @@ function App() {
               generating = {generating}
               adminError = {adminError}
               adminRoundOver = {adminRoundOver}
-              adminLocationCount = {adminLocations.length}
+              adminLocationCount = {realLocationCount}
+              adminFlaggedCount = {flaggedCount}
+              onReviewLocations = {() => setQcOpen(true)}
               adminTeamCount = {adminTeamCount}
               revealTotal = {revealTotal}
               revealLocationSteps = {revealLocationSteps}

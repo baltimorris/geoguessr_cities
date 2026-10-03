@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Btn from './Btn';
 import RoundReveal from './RoundReveal';
 import { supabase } from '../supabase';
+import { roundLabel, roundMinutesFor } from '../scoring';
 
 // Full-width reveal for a projector or TV, reachable straight from the
 // admin-unlocked settings pane without joining as a team - type the game
@@ -35,11 +36,19 @@ export default function AdminMapView({ onClose, defaultCode = '' }) {
     setLooking(false);
     if (!data?.length) { setError('No live game with that code'); return; }
     setGame(data[0]);
-    const { data: locs } = await supabase.from('locations')
-      .select('round,seq,lat,lng').eq('game_id', data[0].id)
-      .order('round').order('seq');
-    setLocations(locs || []);
   };
+
+  // re-pull the spots whenever the game moves on, so a spot the runner swapped
+  // after this screen connected can't leave the projector showing a stale answer
+  useEffect(() => {
+    if (!supabase || !game?.id) return;
+    let cancelled = false;
+    supabase.from('locations')
+      .select('round,seq,lat,lng,heading').eq('game_id', game.id)
+      .order('round').order('seq')
+      .then(({ data: locs }) => { if (!cancelled) setLocations(locs || []); });
+    return () => { cancelled = true; };
+  }, [game?.id, game?.status, game?.current_round]);
 
   // follow the game live, same as a player's own session does
   useEffect(() => {
@@ -57,7 +66,7 @@ export default function AdminMapView({ onClose, defaultCode = '' }) {
   // don't let the projector get ahead of the room - no guess pins up on a
   // big screen until the round the runner's actually revealing is over
   const deadline = game?.round_started_at
-    ? new Date(game.round_started_at).getTime() + (game.settings?.roundMinutes ?? 15) * 60000
+    ? new Date(game.round_started_at).getTime() + roundMinutesFor(game.settings, game.current_round ?? 1) * 60000
     : null;
   const roundOver = game?.status === 'finished' || (deadline !== null && now >= deadline);
 
@@ -90,7 +99,7 @@ export default function AdminMapView({ onClose, defaultCode = '' }) {
         </div>
       ) : !roundOver ? (
         <div className="admin-map-waiting">
-          <h2>{game.status === 'lobby' ? 'Waiting for the game to start' : `Round ${game.current_round || 1} is still going`}</h2>
+          <h2>{game.status === 'lobby' ? 'Waiting for the game to start' : `${roundLabel(game.current_round ?? 1)} is still going`}</h2>
           <p className="team-hint">The reveal shows up here once the round's over</p>
         </div>
       ) : (

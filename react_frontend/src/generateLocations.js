@@ -53,7 +53,7 @@ const stationRing = (station, distanceFt) => {
   });
 };
 
-const metersBetween = (a, b) => {
+export const metersBetween = (a, b) => {
   const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
   const h = Math.sin(dLat / 2) ** 2 +
     Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
@@ -85,6 +85,15 @@ const bucketsFor = (city, settings) => {
     }
   }
   return out;
+};
+
+// Station buckets in particular draw a square around every Metro stop, and
+// some of those stops are out in VA/MD - a pano there is a perfectly valid
+// Street View spot that just isn't in the city. Only keep spots that land
+// inside one of the city's own polygons.
+export const isInsideCity = (city, point) => {
+  const reg = regions[city] || regions.DC;
+  return Object.values(reg.polygons).some(ring => inRing(point.lng, point.lat, ring));
 };
 
 const pickBucket = buckets => {
@@ -128,6 +137,22 @@ const nearestPano = (svc, google, point) =>
     );
   });
 
+// one spot that's inside the city, on official coverage, and at least
+// minGap from everything already in `chosen`
+const pickSpot = async (svc, google, city, buckets, chosen, minGap) => {
+  for (let tries = 0; tries < 40; tries++) {
+    const bucket = pickBucket(buckets);
+    const draft = draftPoint(bucket);
+    if (!draft) continue;
+    const pano = await nearestPano(svc, google, draft);
+    // keep them spread out, same 314m rule as 02_locations.R
+    if (pano && isInsideCity(city, pano) && chosen.every(c => metersBetween(c, pano) >= minGap)) {
+      return { spot: pano, area: bucket.name };
+    }
+  }
+  return null;
+};
+
 export async function generateLocations({ apiKey, city, rounds, perRound, settings }) {
   if (!apiKey) throw new Error('needs a google maps key');
   const google = await loadMaps(apiKey);
@@ -141,24 +166,24 @@ export async function generateLocations({ apiKey, city, rounds, perRound, settin
 
   for (let round = 1; round <= rounds; round++) {
     for (let seq = 1; seq <= perRound; seq++) {
-      let spot = null;
-      let area = null;
-      for (let tries = 0; tries < 40 && !spot; tries++) {
-        const bucket = pickBucket(buckets);
-        const draft = draftPoint(bucket);
-        if (!draft) continue;
-        const pano = await nearestPano(svc, google, draft);
-        // keep them spread out, same 314m rule as 02_locations.R
-        if (pano && chosen.every(c => metersBetween(c, pano) >= minGap)) {
-          spot = pano;
-          area = bucket.name;
-        }
-      }
-      if (spot) {
-        chosen.push(spot);
-        out.push({ round, seq, lat: spot.lat, lng: spot.lng, area });
+      const picked = await pickSpot(svc, google, city, buckets, chosen, minGap);
+      if (picked) {
+        chosen.push(picked.spot);
+        out.push({ round, seq, lat: picked.spot.lat, lng: picked.spot.lng, area: picked.area });
       }
     }
   }
   return out;
+}
+
+// a replacement for one bad spot: same rules, kept clear of `avoid` (every
+// other spot in the game)
+export async function generateOneLocation({ apiKey, city, settings, avoid }) {
+  if (!apiKey) throw new Error('needs a google maps key');
+  const google = await loadMaps(apiKey);
+  const svc = new google.maps.StreetViewService();
+  const buckets = bucketsFor(city, settings);
+  if (!buckets.length) throw new Error('no areas to pick from, check the weights');
+  const picked = await pickSpot(svc, google, city, buckets, avoid, regions.minSpacingMeters ?? 314);
+  return picked ? { lat: picked.spot.lat, lng: picked.spot.lng, area: picked.area } : null;
 }

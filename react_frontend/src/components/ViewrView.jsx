@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StreetView from './StreetView';
+import { roundLabel } from '../scoring';
 
 export default function ViewrView({ roundLocations, isDC, currentRound }) {
   const [active, setActive] = useState(0);
@@ -9,7 +10,7 @@ export default function ViewrView({ roundLocations, isDC, currentRound }) {
   if (!roundLocations.length) {
     return (
       <div className="empty-round">
-        <h2>No locations for round {currentRound} yet</h2>
+        <h2>No locations for {roundLabel(currentRound).toLowerCase()} yet</h2>
         <p className="team-hint">The game runner still has to upload them</p>
       </div>
     );

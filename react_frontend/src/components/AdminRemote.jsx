@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import Btn from './Btn';
 import { supabase } from '../supabase';
+import { PRACTICE_ROUND } from '../scoring';
 import './AdminRemote.css';
 
 // Drives the actual game once it exists. One primary button that IS whatever
@@ -9,9 +10,9 @@ import './AdminRemote.css';
 // of a wall of buttons you could tap in the wrong order or past the end of
 // the reveal - plus a back button for the one step it's safe to undo.
 export default function AdminRemote({
-  game, locationCount, teamCount = 0, generating, error, roundOver, revealTotal, revealLocationSteps,
+  game, locationCount, flaggedCount = 0, teamCount = 0, generating, error, roundOver, revealTotal, revealLocationSteps,
   onClose, onSeedLocations, onStartGame, onEndRound,
-  onRevealNext, onRevealBack, onNextRound, onFinishGame, onNewGame, onOpenProjector,
+  onRevealNext, onRevealBack, onNextRound, onFinishGame, onNewGame, onOpenProjector, onReviewLocations,
 }) {
   // each of these is a round trip to Supabase - an eager double/triple-tap
   // used to fire several requests that all read the same stale reveal_step
@@ -29,7 +30,8 @@ export default function AdminRemote({
   };
 
   const rounds = game.settings?.rounds ?? 3;
-  const round = game.current_round || 1;
+  const round = game.current_round ?? 1; // 0 = practice
+  const practice = round === PRACTICE_ROUND;
   const step = game.reveal_step || 0;
 
   // Standings so the runner always has an answer for "who's winning" without
@@ -86,11 +88,12 @@ export default function AdminRemote({
       };
     } else {
       status = `${locationCount} locations loaded · ${teamNote}`;
+      if (flaggedCount) status += ` · ${flaggedCount} flagged`;
       primary = { label: 'Start game', onClick: onStartGame };
     }
   } else if (game.status === 'active') {
     if (!roundOver) {
-      status = `Round ${round} of ${rounds} — guessing`;
+      status = practice ? 'Practice round — guessing' : `Round ${round} of ${rounds} — guessing`;
       primary = { label: 'End round now', onClick: onEndRound, variant: 'outline' };
     } else if (!revealDone) {
       // last round gets 3 extra steps after its locations, one per place, so
@@ -105,11 +108,11 @@ export default function AdminRemote({
         primary = { label: `Reveal ${placeLabel} place ▸`, onClick: onRevealNext };
       } else {
         const shown = revealLocationSteps ? Math.min(step + 1, revealLocationSteps) : step + 1;
-        status = `Revealing round ${round} — ${shown} of ${revealLocationSteps ?? '…'}`;
+        status = `Revealing ${practice ? 'the practice round' : `round ${round}`} — ${shown} of ${revealLocationSteps ?? '…'}`;
         primary = { label: 'Reveal next ▸', onClick: onRevealNext };
       }
     } else {
-      status = lastRound ? 'Top 3 revealed!' : `Round ${round} fully revealed`;
+      status = lastRound ? 'Top 3 revealed!' : practice ? 'Practice fully revealed' : `Round ${round} fully revealed`;
       primary = lastRound
         ? { label: 'Finish game ▸', onClick: onFinishGame, variant: 'danger' }
         : { label: `Start round ${round + 1} ▸`, onClick: onNextRound };
@@ -154,6 +157,12 @@ export default function AdminRemote({
           {primary.label}
         </Btn>
 
+        {game.status === 'lobby' && locationCount > 0 && onReviewLocations && (
+          <Btn variant="outline" className="btn-lg admin-remote-primary" onClick={onReviewLocations}>
+            🔍 Review locations{flaggedCount ? ` (${flaggedCount} flagged)` : ''}
+          </Btn>
+        )}
+
         {showBack && (
           <Btn
             variant="outline"
@@ -168,7 +177,7 @@ export default function AdminRemote({
         {scoreData && (scoreData.round.length > 0 || scoreData.game.length > 0) && (
           <div className="admin-remote-rankings">
             <div className="admin-ranking-col">
-              <h3>Round {round}</h3>
+              <h3>{practice ? 'Practice' : `Round ${round}`}</h3>
               <ol>
                 {scoreData.round.map((r, i) => (
                   <li key={r.name}>

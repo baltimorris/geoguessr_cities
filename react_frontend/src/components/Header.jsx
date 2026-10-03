@@ -47,7 +47,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onRevealBack, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, adminTeamCount = 0, revealTotal, revealLocationSteps, team, role, onLeaveGame, onOpenProjector }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onRevealBack, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, adminFlaggedCount = 0, adminTeamCount = 0, revealTotal, revealLocationSteps, team, role, onLeaveGame, onOpenProjector, onReviewLocations }) {
   const isNYC = !isDC;
   // a reload shouldn't hand the runner's phone back to a player
   const wasAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('lg_admin') === '1';
@@ -137,6 +137,21 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
             onChange={e => setGameSettings({ ...gameSettings, maxTeamSize: Math.max(1, Number(e.target.value)) })} />
         </label>
       </div>
+      <label className="admin-field handicap-row">
+        <Switch
+          checked={gameSettings.practice !== false}
+          onChange={e => setGameSettings({ ...gameSettings, practice: e.target.checked })}
+        />
+        Practice round first
+        <InfoBadge text="A warm-up on the same few famous spots every game, before round 1. It's revealed like a real round but never counts toward the score." />
+      </label>
+      {gameSettings.practice !== false && (
+        <label className="admin-field">
+          Practice minutes
+          <input type="number" min="1" value={gameSettings.practiceMinutes ?? 4}
+            onChange={e => setGameSettings({ ...gameSettings, practiceMinutes: Math.max(1, Number(e.target.value)) })} />
+        </label>
+      )}
       <label className="admin-field handicap-row">
         <Switch
           checked={gameSettings.handicap}
@@ -278,6 +293,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
           <AdminRemote
             game={adminGame}
             locationCount={adminLocationCount}
+            flaggedCount={adminFlaggedCount}
             teamCount={adminTeamCount}
             generating={generating}
             error={adminError}
@@ -294,6 +310,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
             onFinishGame={onFinishGame}
             onNewGame={onNewGame}
             onOpenProjector={onOpenProjector}
+            onReviewLocations={onReviewLocations}
           />
         )}
       </AnimatePresence>
