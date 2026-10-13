@@ -26,25 +26,35 @@ export default function Home({ onPlay }) {
     <div className="home">
       <div className="home-hero">
         <h1 className="home-title">LocalGuessr</h1>
-        <p className="home-tagline">Test test test</p>
+        <p className="home-tagline">A new kind of pub game.</p>
       </div>
 
       <div className="home-section">
         <p>
-          Bababooey Bababooey Bababooey
+           If you've ever played Geoguessr, you've probably gotten frustrated by how difficult it is to memorize every type of telephone pole and street sign in the world in order to play well.
+
+Enter LocalGuessr—a new spin on the game that keeps things closer to home. Just like GeoGuessr, your team will be dropped into a random location via Google Street View, but every spot is in your city. Now it's just your own backyard, where the knowledge of your urban jungle is all you need. 
         </p>
       </div>
 
       <div className="home-section">
-        <h2>How it works</h2>
+        <h2>How it works!</h2>
         <p>
-          Babbaboeey
+           The gameplay works similar to bar trivia, where teams compete to correctly guess where the locations are. We highly recommend playing in a team—it's easier and more fun that way.
+
+One person on each team will be the “Guesser” and will stay on that page. Everyone else will click on “Link to photos". When the round starts, it will be populated with 25 images. Each location has 5 images, all from different angles that cover an entire 360 rotation around a single spot.
+
+The Guesser, still on the main page, can guess each of the locations by clicking on the map. When your team has guessed all 5 locations, make sure you hit Submit.
+
+You'll have 15 minutes to guess the 5 locations. A typical event has 3 rounds and takes about 1-and-a-half to 2 hours in total.
+
+Score points by guessing closer to where each location actually is. After each round, we show maps of where the real locations were, where everyone guessed, and a score update. 
         </p>
       </div>
 
       <div className="home-play">
         <h2>Ready to play?</h2>
-        {liveGame === null && <p className="team-hint">Checking for a live game…</p>}
+        {liveGame === null && <p className="team-hint">Checking for a live game...</p>}
         {liveGame === false && (
           <p className="team-hint">No game running right now</p>
         )}
