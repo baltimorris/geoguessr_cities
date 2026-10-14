@@ -1111,8 +1111,9 @@ main:has(.screen-full) {
 
 /* a big screen can afford a much bigger map than a phone can */
 @media (min-width: 900px) {
-  .admin-map-stage .reveal-layout .reveal-map { height: 75vh; }
-  .admin-map-stage .reveal-photo { width: 340px; }
+  .admin-map-stage .reveal-layout { flex-direction: row; align-items: flex-start; justify-content: flex-start; gap: 1rem; }
+  .admin-map-stage .reveal-layout .reveal-map { flex: 1; min-width: 0; width: auto; height: 75vh; }
+  .admin-map-stage .reveal-photo { width: 340px; flex-shrink: 0; }
 }
 
 /* Homepage - localguessr.com itself, the first thing anyone sees before
@@ -1218,8 +1219,12 @@ main:has(.screen-full) {
 .thumb-modal-pano { position: relative; height: 70vh; }
 .thumb-modal-pano .streetview-frame { position: absolute; inset: 0; max-width: none; border-radius: 0; }
 
-/* reveal: map plus a picture of the spot that was just answered. stacked on
-   a phone (a shorter map to make room), side by side on a wide screen */
+/* reveal: map plus a picture of the spot that was just answered. always
+   stacked for players - their screen is a narrow column that shrinks to its
+   content, so a side-by-side row (sized off the *window* width) left the map
+   squeezed to a sliver on a wide desktop browser. widths are explicit for the
+   same reason: a % of a shrink-wrapped parent has nothing to resolve against.
+   the projector view (below) is the one place with real room for a row. */
 .reveal-layout {
   display: flex;
   flex-direction: column;
@@ -1227,9 +1232,9 @@ main:has(.screen-full) {
   gap: 0.75rem;
   width: 100%;
 }
-.reveal-layout .reveal-map { height: 46vh; margin-top: 0; }
+.reveal-layout .reveal-map { width: min(92vw, 640px); height: 46vh; margin-top: 0; }
 .reveal-photo {
-  width: min(70%, 300px);
+  width: min(70vw, 300px);
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -1237,11 +1242,6 @@ main:has(.screen-full) {
   text-align: center;
   font-size: 0.8rem;
   color: var(--muted);
-}
-@media (min-width: 900px) {
-  .reveal-layout { flex-direction: row; align-items: flex-start; justify-content: flex-start; gap: 1rem; }
-  .reveal-layout .reveal-map { flex: 1; min-width: 0; height: 60vh; }
-  .reveal-photo { width: 300px; flex-shrink: 0; }
 }
 
 /* Admin location QC */
