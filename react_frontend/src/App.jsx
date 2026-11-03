@@ -52,6 +52,14 @@ const REVEAL_DELAY_MS = 5000; // "Round over!" breather before the reveal
 const SESSION_KEY = 'lg_session';
 const ADMIN_GAME_KEY = 'lg_admin_game';
 
+// The db refuses admin writes from anyone who isn't signed in as an admin,
+// which shows up as a permission error (insert) or as "no row came back"
+// (an update it silently filtered out). Say so instead of a generic failure.
+const adminFailMessage = (error, fallback) =>
+  error?.code === '42501' || error?.code === 'PGRST116'
+    ? `${fallback} - if your admin sign-in expired, sign in again from settings`
+    : fallback;
+
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isDC, setCity] = useState(true);
@@ -303,7 +311,7 @@ function App() {
       // the partial unique index only trips while another game with that code is live
       setAdminError(error.code === '23505'
         ? `Code ${code} is already running a game. Finish it or pick another.`
-        : "Couldn't create the game, try again");
+        : adminFailMessage(error, "Couldn't create the game, try again"));
       return;
     }
     // the practice round's spots are the same every game, so they go in
@@ -329,7 +337,7 @@ function App() {
   const runAdminAction = async (updates, failMsg) => {
     const { data, error } = await supabase.from('games')
       .update(updates).eq('id', adminGame.id).select().single();
-    if (error) { setAdminError(failMsg); return; }
+    if (error) { setAdminError(adminFailMessage(error, failMsg)); return; }
     setAdminError('');
     setAdminGame(data);
   };
@@ -379,7 +387,7 @@ function App() {
         ? `Only found ${spots.length} of ${expected} spots — some areas may have thin Street View coverage. Try again or adjust the weights.`
         : '');
     } catch (e) {
-      setAdminError(e.message || "Couldn't generate locations");
+      setAdminError(adminFailMessage(e, e.message || "Couldn't generate locations"));
     }
     setGenerating(false);
   };

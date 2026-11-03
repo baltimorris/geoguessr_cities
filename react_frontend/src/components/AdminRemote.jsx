@@ -17,7 +17,7 @@ import './AdminRemote.css';
 export default function AdminRemote({
   game, locationCount, flaggedCount = 0, teamCount = 0, generating, error, roundOver, revealTotal, revealLocationSteps,
   onClose, onSeedLocations, onStartGame, onEndRound,
-  onRevealNext, onRevealBack, onNextRound, onFinishGame, onNewGame, onOpenProjector, onReviewLocations,
+  onRevealNext, onRevealBack, onNextRound, onFinishGame, onNewGame, onOpenProjector, onReviewLocations, onSignOut,
 }) {
   // each of these is a round trip to Supabase - an eager double/triple-tap
   // used to fire several requests that all read the same stale reveal_step
@@ -210,6 +210,9 @@ export default function AdminRemote({
 
         {game.status !== 'finished' && (
           <div className="admin-remote-footer">
+            {onSignOut && (
+              <button className="admin-remote-link" onClick={onSignOut}>Sign out of admin</button>
+            )}
             {onOpenProjector && (
               <button className="admin-remote-link" onClick={onOpenProjector}>
                 📽️ Project this game

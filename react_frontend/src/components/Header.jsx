@@ -1,23 +1,24 @@
 // Header.jsx - the striped header bar at the top of every screen, plus the
 // settings gear. The gear opens the player-facing city toggle, the admin
-// password gate, the admin setup form (game code, rounds, weights, practice,
+// sign-in (a real Supabase Auth account), the admin setup form (game code, rounds, weights, practice,
 // handicap) and, once a game exists, the AdminRemote overlay.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Toggle from './Toggle';
 import Btn from './Btn';
+import { supabase } from '../supabase';
 import AdminRemote from './AdminRemote';
 import './Header.css';
 
 const barClasses = ['RD', 'OR', 'BL', 'YL', 'GR', 'SV'];
 
-// Set VITE_ADMIN_PASSWORD in .env.local (and in the host's env vars when
-// deployed). There's deliberately no fallback value: a default sitting in the
-// source is a password anyone can read. With it unset, admin stays locked.
-// Note this is a gate on the admin *screens* only - the value ships inside
-// the built JS, so it keeps casual players out, it is not real protection.
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
+// Admin is a real Supabase Auth account (email + password), checked by the
+// database itself: the db only lets a signed-in admin create/update games or
+// touch locations (see supabase/migrations/*_admin_auth.sql). Nothing secret
+// lives in this front end - hiding the admin screens here is just courtesy,
+// the database is what actually says no.
+const ACK_KEY = 'lg_admin_ack'; // "yes this phone is the game runner" - cosmetic only
 
 // little ? that reveals a hint on hover or tap (tap matters on phones)
 function InfoBadge({ text }) {
@@ -56,25 +57,56 @@ const nycWeightFields = [
 
 export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onRevealBack, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, adminFlaggedCount = 0, adminTeamCount = 0, revealTotal, revealLocationSteps, team, role, onLeaveGame, onOpenProjector, onReviewLocations }) {
   const isNYC = !isDC;
-  // a reload shouldn't hand the runner's phone back to a player
-  const wasAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('lg_admin') === '1';
-  const [adminUnlocked, setAdminUnlocked] = useState(wasAdmin);
-  const [adminWarned, setAdminWarned] = useState(wasAdmin);
+  // unlocked = signed in as an account the db recognises as an admin
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminWarned, setAdminWarned] = useState(() => {
+    try { return localStorage.getItem(ACK_KEY) === '1'; } catch { return false; }
+  });
+  const [emailEntry, setEmailEntry] = useState('');
   const [pwEntry, setPwEntry] = useState('');
-  const [pwError, setPwError] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [signingIn, setSigningIn] = useState(false);
+
+  // a reload shouldn't hand the runner's phone back to a player: Supabase keeps
+  // the session in the browser, so just ask the db whether it's still an admin
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    supabase.rpc('is_admin').then(({ data }) => { if (!cancelled) setAdminUnlocked(data === true); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) setAdminUnlocked(false);
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
 
   const cityKey = isDC ? 'dc' : 'nyc';
   const showRemote = adminUnlocked && !!adminGame;
 
-  const tryUnlock = () => {
-    if (ADMIN_PASSWORD && pwEntry === ADMIN_PASSWORD) {
-      setAdminUnlocked(true);
-      setPwError(false);
-      localStorage.setItem('lg_admin', '1');
+  const trySignIn = async () => {
+    if (!supabase || signingIn || !emailEntry.trim() || !pwEntry) return;
+    setSigningIn(true);
+    setAuthError('');
+    const { error } = await supabase.auth.signInWithPassword({ email: emailEntry.trim(), password: pwEntry });
+    if (error) {
+      setAuthError('Wrong email or password');
     } else {
-      setPwError(true);
+      const { data: isAdmin } = await supabase.rpc('is_admin');
+      if (isAdmin === true) {
+        setAdminUnlocked(true);
+      } else {
+        await supabase.auth.signOut(); // a valid account, just not an admin one
+        setAuthError("That account isn't an admin");
+      }
     }
     setPwEntry('');
+    setSigningIn(false);
+  };
+
+  const signOut = async () => {
+    try { localStorage.removeItem(ACK_KEY); } catch { /* storage blocked, nothing to clear */ }
+    setAdminWarned(false);
+    setAdminUnlocked(false);
+    if (supabase) await supabase.auth.signOut();
   };
 
   if (adminUnlocked && !adminWarned) {
@@ -85,7 +117,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
           This phone is now the game runner. You can't hand it back to a player
           until the game is over, so make sure this is the phone you want running things.
         </p>
-        <Btn onClick={() => setAdminWarned(true)}>Got it, I'm running this game</Btn>
+        <Btn onClick={() => { try { localStorage.setItem(ACK_KEY, '1'); } catch { /* fine, it just asks again */ } setAdminWarned(true); }}>Got it, I'm running this game</Btn>
       </div>
     );
   }
@@ -101,6 +133,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
       </label>
 
       <div className="city-question">Admin</div>
+      <button className="leave-link" onClick={signOut}>Sign out</button>
       {onOpenProjector && (
         <Btn variant="outline" onClick={onOpenProjector}>📽️ Project a reveal</Btn>
       )}
@@ -277,16 +310,30 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
                   <Toggle checked={isNYC} onChange={() => setCity(prev => !prev)} />
                   <span style={{ fontWeight: isNYC ? 'bold' : 'normal', opacity: isNYC ? 1 : 0.5 }}>NYC</span>
                 </label>
+                <div className="city-question">Admin sign in</div>
                 <label className="admin-field">
-                  Admin password
+                  Email
+                  <input
+                    type="email"
+                    autoComplete="username"
+                    value={emailEntry}
+                    onChange={e => { setEmailEntry(e.target.value); setAuthError(''); }}
+                  />
+                </label>
+                <label className="admin-field">
+                  Password
                   <input
                     type="password"
+                    autoComplete="current-password"
                     value={pwEntry}
-                    onChange={e => { setPwEntry(e.target.value); setPwError(false); }}
-                    onKeyDown={e => { if (e.key === 'Enter') tryUnlock(); }}
+                    onChange={e => { setPwEntry(e.target.value); setAuthError(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') trySignIn(); }}
                   />
-                  {pwError && <span className="pw-error">nope</span>}
                 </label>
+                {authError && <span className="pw-error">{authError}</span>}
+                <Btn disabled={signingIn || !emailEntry.trim() || !pwEntry} onClick={trySignIn}>
+                  {signingIn ? 'Signing in…' : 'Sign in'}
+                </Btn>
               </div>
             ) : (
               <div className="admin-section">{setupPanel}</div>
@@ -320,6 +367,7 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
             onNewGame={onNewGame}
             onOpenProjector={onOpenProjector}
             onReviewLocations={onReviewLocations}
+            onSignOut={signOut}
           />
         )}
       </AnimatePresence>

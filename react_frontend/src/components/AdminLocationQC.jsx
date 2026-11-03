@@ -53,12 +53,16 @@ export default function AdminLocationQC({ game, locations, setLocations, onClose
       const avoid = real.filter(x => x.id !== l.id);
       const next = await generateOneLocation({ apiKey, city: game.city, settings: game.settings, avoid });
       if (!next) throw new Error('Couldn\'t find a better spot, try again');
-      const { error: upErr } = await supabase.from('locations')
-        .update({ lat: next.lat, lng: next.lng, heading: null }).eq('id', l.id);
+      const { data: updated, error: upErr } = await supabase.from('locations')
+        .update({ lat: next.lat, lng: next.lng, heading: null }).eq('id', l.id).select('id');
       if (upErr) throw upErr;
+      // an update the db filtered out (not signed in as an admin) comes back empty, not as an error
+      if (!updated?.length) throw Object.assign(new Error('not saved'), { code: 'PGRST116' });
       setLocations(prev => prev.map(x => (x.id === l.id ? { ...x, lat: next.lat, lng: next.lng, heading: null } : x)));
     } catch (e) {
-      setError(e.message || 'Couldn\'t swap that one, try again');
+      setError(e.code === '42501' || e.code === 'PGRST116'
+        ? "Couldn't swap that one - if your admin sign-in expired, sign in again from settings"
+        : (e.message || 'Couldn\'t swap that one, try again'));
     }
     setSwapping(null);
   };

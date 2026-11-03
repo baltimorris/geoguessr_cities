@@ -24,15 +24,16 @@ Create `react_frontend/.env.local` (never commit it):
 | --- | --- |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | the Supabase project (the anon key is public by design) |
 | `VITE_GOOGLE_MAPS_API_KEY` | Maps JavaScript API key, restrict it by HTTP referrer |
-| `VITE_ADMIN_PASSWORD` | unlocks the admin screens. No default: unset means admin stays locked |
 | `VITE_STREETVIEW_STATIC` | optional, `1` = use the Street View Static API for picture thumbnails (must be enabled on the key) |
 
 Anything starting with `VITE_` is baked into the built JavaScript, so none of
-these are secret from someone who opens dev tools.
+these are secret from someone who opens dev tools - which is fine, because none
+of them is a secret (the Supabase anon key and a referrer-restricted Maps key
+are meant to be public). There is no admin password in the site's code.
 
 ## How a game flows
 
-1. Admin (gear icon -> password) sets options and **Create game**. A 4-letter code is made, and the
+1. Admin (gear icon -> sign in with an admin account) sets options and **Create game**. A 4-letter code is made, and the
    practice-round spots are added.
 2. **Generate locations** picks the real rounds' spots. **Review locations** shows them on a map with
    pictures; bad ones can be swapped.
@@ -63,12 +64,24 @@ can be reviewed without the app:
 Guards in the database: size/range limits on every table, a trigger that only accepts a
 guess for the live round before its timer (plus 45s) runs out, and a cap on teams per game.
 
-## Security notes (read before relying on this)
+## Admin accounts
 
-The app has no user accounts. Everything runs with the public anon key, and the admin
-password only hides the admin *screens*. So anyone technical enough to call the database
-directly could still, for example, read the answer coordinates, end a game, or squat on a game
-code. The limits above stop junk and late/out-of-round guesses, not a determined cheater.
-Real protection means moving admin actions behind server-side checks (database functions
-that verify a secret, with direct writes switched off). Fine for a friendly bar night; worth
-doing before anything with prizes.
+Admins sign in with a real Supabase Auth account (email + password). The database
+decides who counts: an email listed in `public.admins` (and confirmed in Supabase Auth)
+passes `is_admin()`, and row-level security lets only those accounts create/update games
+or read/write locations. Players only ever read games, create their team, update their
+own team's size/seat, insert guesses (guarded by a trigger), and read locations for
+rounds that have already started. See `supabase/migrations/20261103_admin_auth.sql`.
+
+To add or remove a co-host: create/delete their user in Supabase -> Authentication -> Users,
+then `insert into public.admins values ('their@email');` (lowercase) or delete the row.
+Keep "Allow new users to sign up" switched **off** in Authentication settings.
+
+## Security notes
+
+- Still true: guesses and teams are readable by anyone with the public key, so a technical
+  player could read other teams' guesses mid-round, and a viewr's phone necessarily has the
+  current round's coordinates (that's the game) - which a teammate can see too.
+- Handicap manipulation is limited (team size can only grow once a game starts) but the
+  size is reported by the players' phones.
+- There is no rate limiting beyond Supabase's own.
