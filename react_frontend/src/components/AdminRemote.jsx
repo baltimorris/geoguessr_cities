@@ -10,6 +10,36 @@ import { supabase } from '../supabase';
 import { PRACTICE_ROUND } from '../scoring';
 import './AdminRemote.css';
 
+// small inline icons for the tool buttons at the bottom (no icon library: it
+// was only ever pulling in one gear icon, so these are drawn by hand)
+const iconProps = { viewBox: '0 0 24 24', width: '1.6em', height: '1.6em', fill: 'currentColor', 'aria-hidden': true };
+const ExitIcon = () => (
+  <svg {...iconProps}><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" /></svg>
+);
+const SatelliteIcon = () => (
+  <svg {...iconProps}>
+    <g transform="rotate(-45 12 12)">
+      <rect x="9" y="7.5" width="6" height="9" rx="1.2" />
+      <rect x="1" y="9.5" width="6.2" height="5" rx="0.7" />
+      <rect x="16.8" y="9.5" width="6.2" height="5" rx="0.7" />
+      <rect x="11.4" y="16.5" width="1.2" height="3" />
+      <rect x="11.4" y="4" width="1.2" height="3" />
+    </g>
+  </svg>
+);
+const CheckeredFlagIcon = () => (
+  <svg {...iconProps}>
+    <rect x="3.5" y="2.5" width="2" height="19" rx="0.6" />
+    <rect x="5.5" y="3.5" width="14" height="10.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+    {[0, 1, 2].flatMap(r => [0, 1, 2, 3].filter(c => (r + c) % 2 === 0).map(c => (
+      <rect key={`${r}-${c}`} x={5.5 + c * 3.5} y={3.5 + r * 3.5} width="3.5" height="3.5" />
+    )))}
+  </svg>
+);
+const RedoIcon = () => (
+  <svg {...iconProps}><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z" /></svg>
+);
+
 // Drives the actual game once it exists. One primary button that IS whatever
 // happens next (start, end round, reveal next, next round, finish...) instead
 // of a wall of buttons you could tap in the wrong order or past the end of
@@ -209,30 +239,32 @@ export default function AdminRemote({
         )}
 
         {game.status !== 'finished' && (
-          <div className="admin-remote-footer">
+          <div className="admin-remote-tools">
             {onSignOut && (
-              <button className="admin-remote-link" onClick={onSignOut}>Sign out of admin</button>
+              <button className="admin-tool admin-tool-orange" onClick={onSignOut}>
+                <ExitIcon /> Sign out
+              </button>
             )}
             {onOpenProjector && (
-              <button className="admin-remote-link" onClick={onOpenProjector}>
-                📽️ Project this game
+              <button className="admin-tool admin-tool-purple" onClick={onOpenProjector}>
+                <SatelliteIcon /> Project
               </button>
             )}
             {showFinishEscape && (
               <button
-                className="admin-remote-link"
+                className="admin-tool admin-tool-red"
                 onClick={() => { if (window.confirm('Finish the game for everyone right now?')) onFinishGame(); }}
               >
-                Finish game now
+                <CheckeredFlagIcon /> Finish game
               </button>
             )}
             <button
-              className="admin-remote-link"
+              className="admin-tool admin-tool-yellow"
               onClick={() => {
                 if (window.confirm('End the current game and reset for a new one? This boots everyone.')) onNewGame();
               }}
             >
-              New game (ends this one &amp; resets)
+              <RedoIcon /> New game
             </button>
           </div>
         )}

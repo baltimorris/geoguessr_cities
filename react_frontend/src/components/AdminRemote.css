@@ -48,16 +48,43 @@
   width: 100%;
 }
 
-.admin-remote-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+.admin-remote-tools {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
   margin-top: 1.5rem;
   padding-top: 1rem;
   border-top: 1px solid #444;
   width: 100%;
 }
+/* an odd one out (finish hides itself once the last reveal is done) spans the row */
+.admin-remote-tools > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* one chunky tile per tool: orange sign out, purple projector, red finish, yellow new game */
+.admin-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: none;
+  border-radius: 12px;
+  padding: 0.8rem 0.5rem;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+}
+.admin-tool:hover { filter: brightness(1.07); }
+.admin-tool:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); }
+.admin-tool-orange { background: #ed8b00; }
+.admin-tool-purple { background: #8e44ad; }
+.admin-tool-red { background: #bf0d3e; }
+/* white on the brand yellow doesn't read, so this one goes dark */
+.admin-tool-yellow { background: #FFD100; color: #282828; }
 
 /* Always-visible standings under the controls - round-only and cumulative,
    side by side, so the runner never has to go dig for "who's winning". */
@@ -121,14 +148,4 @@
   color: #ccc;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
-}
-
-.admin-remote-link {
-  background: none;
-  border: none;
-  color: #999;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0.15rem 0;
 }
