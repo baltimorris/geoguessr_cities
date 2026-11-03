@@ -10,7 +10,11 @@ import StreetView, { loadMaps } from './StreetView';
 // Maps JS API is), so this is a real panorama with every control off and
 // pointer events blocked, which reads as a picture. It only builds once it
 // scrolls into view, so a long QC list isn't 15 panos loading at once.
-// Tap it to open the full, pannable view in an overlay.
+// By default, tap it to open the full, pannable view in an overlay (the admin
+// review uses that). interactive={false} makes it a plain picture with nothing
+// to tap - the reveal uses that, because every phone in the room would
+// otherwise be one tap from loading a live panorama, which is what the Google
+// quota is for.
 //
 // If the Street View Static API is switched on for the key, set
 // VITE_STREETVIEW_STATIC=1 and this renders a plain image instead (half the
@@ -18,12 +22,12 @@ import StreetView, { loadMaps } from './StreetView';
 // It falls back to the panorama on its own if the image request is refused.
 const USE_STATIC = import.meta.env.VITE_STREETVIEW_STATIC === '1';
 
-export default function StreetThumb({ lat, lng, heading, isDC = true, label, className = '' }) {
+export default function StreetThumb({ lat, lng, heading, isDC = true, label, className = '', interactive = true }) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const [staticFailed, setStaticFailed] = useState(false);
   const showStatic = USE_STATIC && !staticFailed && !!apiKey;
   // same starting view the viewr gets (heading 210 when none is stored)
-  const staticUrl = `https://maps.googleapis.com/maps/api/streetview?size=480x300&location=${lat},${lng}`
+  const staticUrl = `https://maps.googleapis.com/maps/api/streetview?size=640x400&location=${lat},${lng}`
     + `&heading=${heading ?? 210}&pitch=0&fov=90&source=outdoor&key=${apiKey}`;
   const wrapRef = useRef(null);
   const panoRef = useRef(null);
@@ -73,14 +77,16 @@ export default function StreetThumb({ lat, lng, heading, isDC = true, label, cla
                             onError={() => setStaticFailed(true)} />
           : <div className="street-thumb-pano" ref={panoRef} />}
         {!apiKey && <span className="team-hint">no street view key</span>}
-        <button
-          type="button"
-          className="street-thumb-hit"
-          aria-label={label ? `Look around ${label}` : 'Look around this spot'}
-          onClick={() => setOpen(true)}
-        />
+        {interactive && (
+          <button
+            type="button"
+            className="street-thumb-hit"
+            aria-label={label ? `Look around ${label}` : 'Look around this spot'}
+            onClick={() => setOpen(true)}
+          />
+        )}
       </div>
-      {open && createPortal(
+      {interactive && open && createPortal(
         <div className="thumb-modal" onClick={() => setOpen(false)}>
           <div className="thumb-modal-body" onClick={e => e.stopPropagation()}>
             <div className="thumb-modal-bar">

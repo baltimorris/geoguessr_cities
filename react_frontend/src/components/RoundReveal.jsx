@@ -456,8 +456,8 @@ export default function RoundReveal({ game, locations, isDC, team }) {
           beside/below the map, not on it, so it never covers a pin or a label */}
       <figure className="reveal-photo">
         <StreetThumb key={`${round}-${loc.seq}`} lat={loc.lat} lng={loc.lng} heading={loc.heading}
-                     isDC={isDC} label={`${roundLabel(round)} · Location ${loc.seq}`} />
-        <figcaption>Location {loc.seq} · tap to look around</figcaption>
+                     isDC={isDC} interactive={false} label={`${roundLabel(round)} · Location ${loc.seq}`} />
+        <figcaption>Location {loc.seq}</figcaption>
       </figure>
       </div>
       <p className="team-hint">The game runner is walking through the reveal</p>
