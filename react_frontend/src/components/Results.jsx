@@ -15,6 +15,7 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScJJ1YFUFOIs
 // swap from "top 3 dramatically announced" to "oh, a totally different list".
 export default function Results({ game, locations, onLeaveGame }) {
   const [standings, setStandings] = useState(null);
+  const haveLocations = locations.length > 0;
 
   useEffect(() => {
     if (!supabase || !game?.id) return;
@@ -27,25 +28,14 @@ export default function Results({ game, locations, onLeaveGame }) {
     (async () => {
       // scoring lives in the db now - team_total_scores already has every
       // team's final tally, this just fills in anyone who scored nothing
-      const { data: teams } = await supabase.from('teams')
-        .select('name,size').eq('game_id', game.id);
-      if (!teams?.length) { setStandings([]); return; }
-      const { data: totals } = await supabase.from('team_total_scores')
-        .select('team_name,total_points').eq('game_id', game.id);
-      const { data: scores } = await supabase.from('guess_scores')
-        .select('team_name,scored_team_size').eq('game_id', game.id).eq('is_latest', true);
-
-      const totalByTeam = new Map((totals || []).map(t => [t.team_name, t.total_points]));
-      const sizeByTeam = new Map((scores || []).map(s => [s.team_name, s.scored_team_size]));
-      const scored = teams.map(t => ({
-        name: t.name,
-        total: totalByTeam.get(t.name) || 0,
-        size: sizeByTeam.get(t.name) || t.size || 1,
-      })).sort((a, b) => b.total - a.total);
-      setStandings(scored);
+      // one call (results_data) returns every team with its final total and
+      // the size it was scored at, worked out for just this game
+      const { data: rows } = await supabase.rpc('results_data', { p_game: game.id });
+      if (!rows?.length) { setStandings([]); return; }
+      setStandings([...rows].sort((a, b) => b.total - a.total));
     })();
     // locations arrive async on a refresh; recompute when they land or scores read 0
-  }, [game?.id, locations]);
+  }, [game?.id, haveLocations]);
 
   if (!standings) return <p>Tallying scores...</p>;
 

@@ -137,6 +137,9 @@ export default function RoundReveal({ game, locations, isDC, team }) {
     .filter(l => l.round === round)
     .sort((a, b) => a.seq - b.seq);
 
+  const haveLocations = locations.length > 0;
+  const roundLocKey = roundLocations.map(l => l.seq).join(',');
+
   useEffect(() => {
     if (!supabase || !game?.id) return;
     // locations arrive as a separate async fetch up in App.jsx - on a refresh
@@ -146,18 +149,18 @@ export default function RoundReveal({ game, locations, isDC, team }) {
     // rerun it once locations actually show up.
     if (!locations.length) return;
     (async () => {
-      // scoring itself (distance, handicap, points) lives in the db now -
-      // guess_scores and team_round_scores already have the math done, this
-      // just shapes what comes back for the map and the standings list
-      const { data: teams } = await supabase.from('teams')
-        .select('name,size').eq('game_id', game.id);
+      // scoring itself (distance, handicap, points) lives in the db - one call
+      // (reveal_data) hands back the teams, every scored guess up to this round
+      // and the per-round totals, all worked out for just this game. This used
+      // to be three separate view queries per phone, each re-ranking every
+      // guess ever made; with a whole room asking at the same instant that
+      // took tens of seconds. This just shapes the result for the map and the
+      // standings list.
+      const { data: reveal } = await supabase.rpc('reveal_data', { p_game: game.id, p_round: round });
+      const teams = reveal?.teams;
+      const scores = reveal?.scores;
+      const roundRows = reveal?.round_rows;
       if (!teams?.length) { setData({ byLoc: {}, standings: [] }); return; }
-      const { data: scores } = await supabase.from('guess_scores')
-        .select('team_name,team_emoji,scored_team_size,round,location_seq,guess_lat,guess_lng,distance_ft,points')
-        .eq('game_id', game.id).eq('is_latest', true);
-      const { data: roundRows } = await supabase.from('team_round_scores')
-        .select('team_name,round,round_points,running_total')
-        .eq('game_id', game.id).lte('round', round);
 
       const byLoc = {};
       for (const loc of roundLocations) {
@@ -207,7 +210,10 @@ export default function RoundReveal({ game, locations, isDC, team }) {
 
       setData({ byLoc, standings: standingsWithDelta });
     })();
-  }, [game?.id, round, locations]);
+    // keyed on whether locations exist and which ones, not the array itself:
+    // App refetches `locations` right after this mounts, and a new array with
+    // the same contents must not trigger a second round of queries
+  }, [game?.id, round, haveLocations, roundLocKey]);
 
   // Small fields step one dot at a time like always. Once a location has more
   // guesses than fit on the podium, everyone outside it drops in as a single

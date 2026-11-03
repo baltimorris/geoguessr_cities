@@ -35,7 +35,11 @@ export default function Lobby({ role, team, player, setPlayer, game }) {
   // Everyone in the lobby announces themselves, everyone renders their teammates
   useEffect(() => {
     if (!supabase || !game?.id || !team?.name) return;
-    const channel = supabase.channel(`lobby-${game.id}`, {
+    // one presence channel PER TEAM, not one for the whole room: with a shared
+    // channel every join is sent to every phone (N phones -> N x N messages as
+    // a room fills up, against a free-tier cap of 20 presence messages/sec).
+    // Teammates are the only ones who need to see each other here.
+    const channel = supabase.channel(`lobby-${game.id}-${encodeURIComponent(team.name.trim().toLowerCase())}`, {
       config: { presence: { key: myKey } },
     });
     // sync alone misses renames, so refresh on joins and leaves too

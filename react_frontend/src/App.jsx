@@ -82,6 +82,7 @@ function App() {
   const [restoring, setRestoring] = useState(true);
   const [qcOpen, setQcOpen] = useState(false); // admin-only: reviewing the game's spots before players see them
   const [projecting, setProjecting] = useState(false); // admin-only full takeover: the reveal, full width, for a projector
+  const [rtOk, setRtOk] = useState(false); // is the realtime socket for the joined game actually connected
   const [pastHome, setPastHome] = useState(false); // past the homepage, headed into code entry / an existing session
 
   // shared clock tick, everything time-based hangs off this
@@ -175,9 +176,30 @@ function App() {
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${game.id}` },
         payload => setGame(prev => ({ ...prev, ...payload.new })))
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+      .subscribe(status => setRtOk(status === 'SUBSCRIBED'));
+    return () => { setRtOk(false); supabase.removeChannel(channel); };
   }, [game?.id]);
+
+  // Safety net under the realtime socket. The free plan caps a project at 200
+  // simultaneous realtime connections, and a phone over the cap (or one whose
+  // socket silently died on bar wifi) would otherwise sit on a frozen screen
+  // for the rest of the game. A single-row read by id is cheap, so: check in
+  // every 4s while the socket is down, every 20s as a backstop while it's up.
+  useEffect(() => {
+    if (!supabase || !game?.id) return;
+    const poll = () => {
+      if (document.visibilityState !== 'visible') return;
+      supabase.from('games').select().eq('id', game.id).maybeSingle().then(({ data }) => {
+        if (!data) return;
+        setGame(prev => {
+          const next = { ...prev, ...data };
+          return JSON.stringify(next) === JSON.stringify(prev) ? prev : next; // nothing new, no re-render
+        });
+      });
+    };
+    const id = setInterval(poll, rtOk ? 20000 : 4000);
+    return () => clearInterval(id);
+  }, [game?.id, rtOk]);
 
   // A locked/backgrounded phone can drop the realtime socket without any
   // visible sign of it - coming back to find the round already moved on (or
