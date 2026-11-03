@@ -92,7 +92,7 @@ export default function GuessrView({ game, team, roundLocations, deadline, now }
     return (
       <div className="empty-round">
         <h2>No locations for {roundLabel(round).toLowerCase()} yet.</h2>
-        <p className="team-hint">Jay still has to pull the lever and grab some locations!</p>
+        <p className="team-hint">We're still grabbing some spots. Stay tuned.</p>
       </div>
     );
   }
