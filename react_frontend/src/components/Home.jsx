@@ -1,32 +1,73 @@
 // Home.jsx - the public homepage (what localguessr.com shows first): what the
 // game is, contact links, and a "Play now!" button that only appears when a
-// game is actually live (a lobby or active game exists).
+// game is actually live (a lobby or active game exists). The call to action
+// sits at the very top so nobody has to scroll to find it, and a bar pinned
+// to the bottom of the screen takes over once it scrolls out of view.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Btn from './Btn';
 import { supabase } from '../supabase';
 
 // localguessr.com's actual homepage now - replaces the old static
 // website/index.html (which pointed at the long-retired shinyapps.io DC/NYC
-// apps). Play Now only lights up when there's a real game to join, checked
-// once against the games table - no point sending someone to an empty code
-// entry screen outside of an actual event.
+// apps). Play Now only lights up when there's a real game to join - no point
+// sending someone to an empty code entry screen outside of an actual event.
+//
+// "Live" = a lobby/active game made in the last day. The age limit matters:
+// a game someone created and never finished would otherwise keep this lit
+// forever. It's re-checked every 15s and whenever the tab comes back to the
+// foreground, so a page left open doesn't keep saying "live" after the
+// runner ends the game (it used to check once, on load, and never again).
+// Polled rather than realtime on purpose - a realtime socket per visitor
+// browsing the homepage would eat into the 200-connection free-plan cap.
+const LIVE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const RECHECK_MS = 15000;
+
 export default function Home({ onPlay }) {
   const [liveGame, setLiveGame] = useState(null); // null = checking, true/false once known
+  const [ctaVisible, setCtaVisible] = useState(true); // is the top call to action on screen
+  const ctaRef = useRef(null);
 
   useEffect(() => {
     if (!supabase) { setLiveGame(false); return; }
     let cancelled = false;
-    supabase.from('games').select('id', { count: 'exact', head: true }).in('status', ['lobby', 'active'])
-      .then(({ count }) => { if (!cancelled) setLiveGame((count || 0) > 0); });
-    return () => { cancelled = true; };
+    const check = () => {
+      if (document.visibilityState !== 'visible') return;
+      const since = new Date(Date.now() - LIVE_WINDOW_MS).toISOString();
+      supabase.from('games').select('id', { count: 'exact', head: true })
+        .in('status', ['lobby', 'active']).gte('created_at', since)
+        .then(({ count, error }) => { if (!cancelled && !error) setLiveGame((count || 0) > 0); });
+    };
+    check();
+    const id = setInterval(check, RECHECK_MS);
+    document.addEventListener('visibilitychange', check);
+    return () => { cancelled = true; clearInterval(id); document.removeEventListener('visibilitychange', check); };
   }, []);
+
+  // pin a Play bar to the bottom only while the top button is scrolled away
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setCtaVisible(e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [liveGame]);
 
   return (
     <div className="home">
       <div className="home-hero">
         <h1 className="home-title">LocalGuessr</h1>
         <p className="home-tagline">A new kind of pub game.</p>
+        <div className="home-cta" ref={ctaRef}>
+          {liveGame === null && <p className="team-hint">Checking for a live game...</p>}
+          {liveGame === false && <p className="home-cta-idle">No game running right now</p>}
+          {liveGame === true && (
+            <>
+              <Btn className="btn-lg home-cta-btn" onClick={onPlay}>Play now!</Btn>
+              <p className="team-hint">A game is live - jump in</p>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="home-section">
@@ -52,17 +93,6 @@ Score points by guessing closer to where each location actually is. After each r
         </p>
       </div>
 
-      <div className="home-play">
-        <h2>Ready to play?</h2>
-        {liveGame === null && <p className="team-hint">Checking for a live game...</p>}
-        {liveGame === false && (
-          <p className="team-hint">No game running right now</p>
-        )}
-        {liveGame === true && (
-          <Btn className="btn-lg" onClick={onPlay}>Play now!</Btn>
-        )}
-      </div>
-
       <div className="home-section home-contact">
         <h2>Contact</h2>
         <p>
@@ -84,6 +114,12 @@ Score points by guessing closer to where each location actually is. After each r
           <a href="https://buymeacoffee.com/localguessr" target="_blank" rel="noopener noreferrer">here</a>.
         </p>
       </div>
+
+      {liveGame === true && !ctaVisible && (
+        <div className="home-play-bar">
+          <Btn className="btn-lg" onClick={onPlay}>Play now!</Btn>
+        </div>
+      )}
     </div>
   );
 }
