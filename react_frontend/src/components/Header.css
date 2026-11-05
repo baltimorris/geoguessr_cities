@@ -284,3 +284,11 @@
 .GR { background-color: #00B140; width: 16.66%; }
 .SV { background-color: #919d9d; width: 16.66%; }
 
+
+/* resume-a-game box in the admin setup panel */
+.resume-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+}

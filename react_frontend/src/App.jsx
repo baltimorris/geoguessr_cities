@@ -130,6 +130,24 @@ function App() {
       });
   }, []);
 
+  // pick up a running game this phone doesn't know about (new phone, cleared
+  // browser storage, or a game made somewhere other than this admin panel).
+  // Same thing the saved-id restore above does, just keyed by the 4-letter code.
+  // Returns a message to show, or '' when it worked.
+  const resumeGame = async (code) => {
+    if (!supabase) return "Not connected to the database";
+    const { data, error } = await supabase.from('games').select()
+      .eq('code', code.toUpperCase()).neq('status', 'finished')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (error) return adminFailMessage(error, "Couldn't look that up, try again");
+    if (!data) return `No running game with code ${code.toUpperCase()} (a finished game can't be resumed)`;
+    setAdminGame(data);
+    setGameSettings(prev => ({ ...prev, code: data.code }));
+    if (data.city) setCity(data.city === 'DC');
+    localStorage.setItem(ADMIN_GAME_KEY, data.id);
+    return '';
+  };
+
   const leaveGame = () => {
     // free up the guessr seat so a teammate can pick it up - otherwise a team
     // whose guessr's phone dies or who taps "not you?" is stuck guessr-less
@@ -551,6 +569,7 @@ function App() {
               adminLocationCount = {realLocationCount}
               adminFlaggedCount = {flaggedCount}
               onReviewLocations = {() => setQcOpen(true)}
+              onResumeGame = {resumeGame}
               adminTeamCount = {adminTeamCount}
               revealTotal = {revealTotal}
               revealLocationSteps = {revealLocationSteps}

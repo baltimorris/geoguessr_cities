@@ -29,6 +29,8 @@ export default function ThemedTiles() {
       url={dark ? DARK : LIGHT}
       attribution={ATTRIB}
       maxZoom={20}
+      updateWhenZooming={false} // don't fetch tiles for every frame of a zoom animation, only where it lands
+      keepBuffer={4}
       maxNativeZoom={16} // Esri only renders this layer up to z16; past that, upscale rather than 404
     />
   );

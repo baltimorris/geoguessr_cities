@@ -4,7 +4,7 @@
 // podium). Players see it on their phones; AdminMapView shows it on the
 // projector. Distances and points come from the database, not computed here.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MapContainer, Marker, CircleMarker, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -13,6 +13,7 @@ import ThemedTiles from './ThemedTiles';
 import { supabase } from '../supabase';
 import Standings from './Standings';
 import PodiumSlot from './PodiumSlot';
+import PodiumLabels from './PodiumLabels';
 import StreetThumb from './StreetThumb';
 import { distanceLabel, REVEAL_PODIUM_SIZE, PRACTICE_ROUND, roundLabel } from '../scoring';
 
@@ -45,29 +46,46 @@ const emojiIcon = emoji => L.divIcon({
 
 // Camera only moves when its points change, i.e. when the admin steps.
 // On the closest reveal it dives in tight even if the rest fall off-screen.
+// Going to a different location swoops there (flyTo); stepping within the same
+// location just eases the frame over, and doesn't move at all if the new dot
+// already fits comfortably - the old version swooped out and back in on every
+// single tap, which is what read as jittery.
 function CameraDriver({ points, tight }) {
   const map = useMap();
+  const lastAnswer = useRef(null);
   useEffect(() => {
     if (!points?.length) return;
+    const answerKey = `${points[0][0]},${points[0][1]}`;
+    const sameSpot = lastAnswer.current === answerKey;
+    lastAnswer.current = answerKey;
     if (points.length === 1) {
       map.flyTo(points[0], 15, { duration: 0.9 });
-    } else {
-      map.flyToBounds(points, {
-        padding: tight ? [80, 80] : [55, 55],
-        maxZoom: tight ? 17 : 15,
-        duration: tight ? 0.7 : 1.1,
-        easeLinearity: 0.25,
-      });
+      return;
     }
+    const pad = tight ? 80 : 55;
+    const maxZoom = tight ? 17 : 15;
+    const bounds = L.latLngBounds(points);
+    if (sameSpot && !tight) {
+      try {
+        const target = Math.min(maxZoom, map.getBoundsZoom(bounds, false, L.point(pad * 2, pad * 2)));
+        if (Math.abs(map.getZoom() - target) < 0.5 && map.getBounds().pad(-0.06).contains(bounds)) return;
+      } catch { /* map not ready yet - just move */ }
+    }
+    const opts = { padding: [pad, pad], maxZoom, duration: tight ? 0.7 : 1, easeLinearity: 0.25 };
+    if (sameSpot) map.fitBounds(bounds, { ...opts, animate: true });
+    else map.flyToBounds(bounds, { ...opts, duration: 1.3 });
   }, [map, JSON.stringify(points), tight]);
   return null;
 }
 
-// Bumps a tick on every map move so the edge arrows recompute in sync
+// Tells the parent when the map has settled (not on every frame of a fly -
+// re-rendering every marker and tooltip 60 times a second mid-animation was
+// the main source of stutter). Edge arrows follow the live movement
+// themselves, see EdgeArrows.
 function MapBus({ onMap, onMove }) {
   const map = useMap();
   useEffect(() => { onMap(map); }, [map, onMap]);
-  useMapEvents({ move: onMove, zoom: onMove, resize: onMove });
+  useMapEvents({ moveend: onMove, zoomend: onMove, resize: onMove });
   return null;
 }
 
@@ -83,6 +101,14 @@ function safeContainerPoint(map, lat, lng) {
 // with their true latitude (off left/right) or longitude (off top/bottom). each
 // point carries its own color so it matches whatever's drawn for it on the map.
 function EdgeArrows({ map, points }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!map) return;
+    let raf = 0;
+    const bump = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; setTick(t => t + 1); }); };
+    map.on('move zoom resize', bump);
+    return () => { map.off('move zoom resize', bump); if (raf) cancelAnimationFrame(raf); };
+  }, [map]);
   if (!map) return null;
   let size;
   try { size = map.getSize(); } catch { return null; }
@@ -338,17 +364,14 @@ export default function RoundReveal({ game, locations, isDC, team }) {
     if (i >= bulkCount) return false; // podium always gets the full treatment
     return !isOwnTeam(g);
   });
-  // camera still needs to frame muted teams too - "muted" only changes how
-  // they're drawn (emoji instead of a full balloon), not whether they're on
-  // the map at all, so leaving them out of the fit left a tight zoom on
-  // just the answer pin with a dozen emoji scattered off-screen
-  const shownPoints = revealed.filter((_, i) => dotAppeared[i]);
-
-  // tight on answer+closest for the finale, otherwise frame whatever's
-  // actually appeared (not the ones still waiting their turn to pop in)
+  // the camera frames everyone in this step up front - including bulk dots
+  // that haven't popped in yet - so it makes ONE move per tap instead of
+  // re-aiming every 90ms while the field drops in. (muted teams count too:
+  // "muted" only changes how they're drawn, not whether they're on the map)
+  // tight on answer+closest for the finale, otherwise the whole step
   const cameraPoints = isClosest
     ? [[loc.lat, loc.lng], [revealed[revealed.length - 1].lat, revealed[revealed.length - 1].lng]]
-    : [[loc.lat, loc.lng], ...shownPoints.map(g => [g.lat, g.lng])];
+    : [[loc.lat, loc.lng], ...revealed.map(g => [g.lat, g.lng])];
 
   // teams currently off-screen get an edge arrow instead of their on-map
   // label - showing both used to overlap right at the edge
@@ -363,6 +386,25 @@ export default function RoundReveal({ game, locations, isDC, team }) {
   const edgePoints = revealed
     .map((g, i) => ({ ...g, visible: dotAppeared[i] && !dotMuted[i], color: i < bulkCount ? FIELD_COLOR : LINE_COLORS[(i - bulkCount) % LINE_COLORS.length] }))
     .filter(g => g.visible);
+
+  // inputs for PodiumLabels: the pills for the individually-stepped top guesses,
+  // plus things on the map they should stay clear of
+  const podiumItems = revealed
+    .map((g, i) => ({ g, i }))
+    .filter(({ i }) => i >= bulkCount)
+    .map(({ g, i }) => ({
+      key: g.team, lat: g.lat, lng: g.lng, dist: g.dist, score: g.score,
+      rank: cur.length - i, // farthest-first, closest gets rank 1
+      color: LINE_COLORS[(i - bulkCount) % LINE_COLORS.length],
+      team: g.team,
+    }));
+  const labelAvoid = [
+    { lat: loc.lat, lng: loc.lng, w: 30, h: 30 }, // the answer marker
+    { lat: loc.lat, lng: loc.lng, w: 18 + 8 * `Location ${loc.seq}`.length, h: 26, dy: -29 }, // its label
+    ...revealed
+      .filter((g, i) => i < bulkCount && dotAppeared[i])
+      .map(g => ({ lat: g.lat, lng: g.lng, w: 24, h: 24 })), // field dots / emoji
+  ];
 
   return (
     <div className="reveal">
@@ -428,7 +470,6 @@ export default function RoundReveal({ game, locations, isDC, team }) {
             }
             const podiumIndex = i - bulkCount; // 0-based within the individually-stepped podium
             const color = LINE_COLORS[podiumIndex % LINE_COLORS.length];
-            const rank = cur.length - i; // farthest-first, closest gets rank 1
             return (
               <React.Fragment key={g.team}>
                 <CircleMarker
@@ -436,11 +477,7 @@ export default function RoundReveal({ game, locations, isDC, team }) {
                   radius={9}
                   pathOptions={{ color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, className: 'reveal-dot' }}
                 >
-                  {inView(g.lat, g.lng) && (
-                    <Tooltip permanent direction="auto" offset={[10, 0]} className={`reveal-tt tt-${podiumIndex}`}>
-                      <b>{rank}.</b> {g.team}<br />{distanceLabel(g.dist)} | {g.score.toLocaleString()} pts
-                    </Tooltip>
-                  )}
+                  {/* the name/score pill is drawn by PodiumLabels, which keeps the top few from stacking */}
                 </CircleMarker>
                 <Polyline
                   positions={[[loc.lat, loc.lng], [g.lat, g.lng]]}
@@ -451,6 +488,7 @@ export default function RoundReveal({ game, locations, isDC, team }) {
           })}
         </MapContainer>
         <EdgeArrows map={map} points={edgePoints} />
+        <PodiumLabels map={map} items={podiumItems} avoid={labelAvoid} />
       </div>
       {/* so everyone (and the runner) remembers what the spot actually looked like -
           beside/below the map, not on it, so it never covers a pin or a label */}

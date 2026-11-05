@@ -126,7 +126,11 @@ const draftPoint = bucket => {
 // tagged outdoor and slip through, and those are exactly the ones that come
 // up unguessable. Official Google-car coverage doesn't have that problem, so
 // only keep panos whose copyright line is Google's own, not a contributor's.
-const isOfficialGoogleCoverage = copyright => /google/i.test(copyright || '');
+// "Google" alone isn't enough: Google's own business-interior tours are
+// credited "© Google" with no year (that's how an indoor spot got into a
+// game), while street coverage always carries its capture year, e.g.
+// "© 2026 Google". So the year is required.
+export const isOfficialGoogleCoverage = copyright => /^\s*(©|\(c\))?\s*\d{4}\s+Google\b/i.test(copyright || '');
 
 const nearestPano = (svc, google, point) =>
   new Promise(resolve => {

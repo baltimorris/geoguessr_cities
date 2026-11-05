@@ -55,7 +55,7 @@ const nycWeightFields = [
   ['subway_distance', 'Subway distance (ft)'],
 ];
 
-export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onRevealBack, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, adminFlaggedCount = 0, adminTeamCount = 0, revealTotal, revealLocationSteps, team, role, onLeaveGame, onOpenProjector, onReviewLocations }) {
+export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, gameSettings, setGameSettings, hideSettings, adminGame, onCreateGame, onNewGame, onStartGame, onEndRound, onRevealNext, onRevealBack, onNextRound, onFinishGame, onSeedLocations, generating, adminError, adminRoundOver, adminLocationCount = 0, adminFlaggedCount = 0, adminTeamCount = 0, revealTotal, revealLocationSteps, team, role, onLeaveGame, onOpenProjector, onReviewLocations, onResumeGame }) {
   const isNYC = !isDC;
   // unlocked = signed in as an account the db recognises as an admin
   const [adminUnlocked, setAdminUnlocked] = useState(false);
@@ -66,6 +66,10 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
   const [pwEntry, setPwEntry] = useState('');
   const [authError, setAuthError] = useState('');
   const [signingIn, setSigningIn] = useState(false);
+  // "resume a game" box: pick up a game this phone isn't already running
+  const [resumeCode, setResumeCode] = useState('');
+  const [resumeMsg, setResumeMsg] = useState('');
+  const [resuming, setResuming] = useState(false);
 
   // a reload shouldn't hand the runner's phone back to a player: Supabase keeps
   // the session in the browser, so just ask the db whether it's still an admin
@@ -102,6 +106,13 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
     setSigningIn(false);
   };
 
+  const resume = async () => {
+    if (!onResumeGame || resuming || resumeCode.length !== 4) return;
+    setResuming(true);
+    setResumeMsg(await onResumeGame(resumeCode));
+    setResuming(false);
+  };
+
   const signOut = async () => {
     try { localStorage.removeItem(ACK_KEY); } catch { /* storage blocked, nothing to clear */ }
     setAdminWarned(false);
@@ -136,6 +147,24 @@ export default function Header({ settingsOpen, setSettingsOpen, isDC, setCity, g
       <button className="leave-link" onClick={signOut}>Sign out</button>
       {onOpenProjector && (
         <Btn variant="outline" onClick={onOpenProjector}>📽️ Project a reveal</Btn>
+      )}
+      {onResumeGame && (
+        <>
+          <div className="city-question">Resume a game</div>
+          <p className="team-hint">For a game that's already running but isn't showing up here (new phone, cleared browser, or it was made somewhere else)</p>
+          <div className="resume-row">
+            <input
+              className="code-input"
+              maxLength={4}
+              placeholder="CODE"
+              value={resumeCode}
+              onChange={e => { setResumeCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); setResumeMsg(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') resume(); }}
+            />
+            <Btn variant="outline" onClick={resume}>{resuming ? 'Looking...' : 'Resume'}</Btn>
+          </div>
+          {resumeMsg && <p className="pw-error">{resumeMsg}</p>}
+        </>
       )}
       <label className="admin-field">
         Game code
